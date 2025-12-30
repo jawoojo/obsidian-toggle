@@ -1,0 +1,10 @@
+{
+    "id": "obsidian-notion-toggle",
+    "name": "Notion Style Toggle",
+    "version": "1.0.0",
+    "minAppVersion": "0.15.0",
+    "description": "Adds Notion-style toggle using '|>' syntax.",
+    "author": "User",
+    "authorUrl": "https://github.com/user/obsidian-notion-toggle",
+    "isDesktopOnly": false
+}
