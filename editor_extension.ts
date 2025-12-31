@@ -26,7 +26,7 @@ import {
 const START_TAG = "|> ";
 const END_TAG = "<|";
 
-// [PRD 3.1.1] Widget for Toggle (Triangle)
+// [PRD 3.1.1] Start Widget (Triangle)
 class ToggleWidget extends WidgetType {
     constructor(readonly isFolded: boolean, readonly foldStart: number, readonly foldEnd: number) {
         super();
@@ -35,7 +35,7 @@ class ToggleWidget extends WidgetType {
     toDOM(view: EditorView): HTMLElement {
         const span = document.createElement("span");
         span.className = "toggle-widget";
-        span.textContent = this.isFolded ? "▶" : "▼"; // User requested: Triangle
+        span.textContent = this.isFolded ? "▶" : "▼";
         span.style.cursor = "pointer";
         span.style.paddingRight = "5px";
         span.style.userSelect = "none";
@@ -60,6 +60,16 @@ class ToggleWidget extends WidgetType {
     ignoreEvent(): boolean {
         return true;
     }
+}
+
+// [New] End Widget (Horizontal Line)
+class EndTagWidget extends WidgetType {
+    toDOM(view: EditorView): HTMLElement {
+        const div = document.createElement("div");
+        div.className = "toggle-end-widget";
+        return div;
+    }
+    ignoreEvent(): boolean { return true; }
 }
 
 // Helper: Stack Counting
@@ -102,7 +112,6 @@ const togglePlugin = ViewPlugin.fromClass(
         }
 
         update(update: ViewUpdate) {
-            // Rebuild if doc OR fold state changes
             if (update.docChanged || update.viewportChanged || update.transactions.some(tr => tr.effects.some((e: StateEffect<any>) => e.is(foldEffect) || e.is(unfoldEffect)))) {
                 this.decorations = this.buildDecorations(update.view);
             }
@@ -113,7 +122,6 @@ const togglePlugin = ViewPlugin.fromClass(
             const lineCount = doc.lines;
             const ranges = foldedRanges(view.state);
 
-            // Container for all decorations to be sorted
             interface DecoSpec {
                 from: number;
                 to: number;
@@ -151,8 +159,9 @@ const togglePlugin = ViewPlugin.fromClass(
             for (let i = 1; i <= lineCount; i++) {
                 currentLevel += diff[i];
                 const line = doc.line(i);
+                const text = line.text;
 
-                // 1. Indentation
+                // 1. Indentation (using margin-left via CSS)
                 if (currentLevel > 0) {
                     const safeLevel = Math.min(currentLevel, 10);
                     decos.push({
@@ -164,14 +173,13 @@ const togglePlugin = ViewPlugin.fromClass(
                     });
                 }
 
-                // 2. Widget Replacement for "|> "
-                if (line.text.startsWith(START_TAG)) {
+                // 2. Start Widget ("|> " -> Triangle)
+                if (text.startsWith(START_TAG)) {
                     const endLineNo = findMatchingEndLine(doc, i);
                     if (endLineNo !== -1) {
                         const foldStart = line.to;
                         const foldEnd = doc.line(endLineNo).to;
 
-                        // Check folded state
                         let isFolded = false;
                         ranges.between(foldStart, foldEnd, (from, to) => {
                             if (from === foldStart && to === foldEnd) isFolded = true;
@@ -187,9 +195,21 @@ const togglePlugin = ViewPlugin.fromClass(
                         });
                     }
                 }
+
+                // 3. End Widget ("<|" -> Horizontal Line)
+                if (text.startsWith(END_TAG)) {
+                    decos.push({
+                        from: line.from,
+                        to: line.from + END_TAG.length,
+                        deco: Decoration.replace({
+                            widget: new EndTagWidget(),
+                            inclusive: true
+                        })
+                    });
+                }
             }
 
-            // Sort decorations to satisfy RangeSetBuilder
+            // Sort decorations
             decos.sort((a, b) => {
                 if (a.from !== b.from) return a.from - b.from;
                 return a.to - b.to;
@@ -208,41 +228,41 @@ const togglePlugin = ViewPlugin.fromClass(
     }
 );
 
-// 3. Auto-Close Keymap
-// triggered when user types ">"
+// 3. Auto-Close Keymap (Trigger on Space)
 const autoCloseKeymap = KeymapListener();
 
 function KeymapListener(): Extension {
     return Prec.highest(keymap.of([{
-        key: ">",
+        key: "Space",
         run: (view: EditorView) => {
             const state = view.state;
             const ranges = state.selection.ranges;
-            // Only handle single cursor for simplicity
             if (ranges.length !== 1) return false;
 
             const range = ranges[0];
-            if (!range.empty) return false; // Don't handle selections
+            if (!range.empty) return false;
 
             const pos = range.head;
-            // Check if previous char is "|"
-            const prevChar = state.doc.sliceString(pos - 1, pos);
+            // Check previous 2 chars: "|>"
+            const prevChars = state.doc.sliceString(pos - 2, pos);
 
-            if (prevChar === "|") {
-                // Check if it is at the START of the line (or just |> pattern?)
-                // User said "|> 치면". Assuming start of block.
-                const line = state.doc.lineAt(pos);
-                // Check if we are forming "|>" at start of line
-                // line.text up to pos-1 should be empty?? or just check pattern?
-                // Let's being robust: Just check if we are typing ">" after "|"
+            if (prevChars === "|>") {
+                // Ensure it's at start of line or clean context? 
+                // User requirement: "|> " triggers it.
 
-                // Insert ">" then newline then "<|"
-                const insertText = ">\n<|";
+                // Insert " \n<|"
+                // Actually user types Space. We let Space happen? 
+                // Or we replace the Space with the structure?
+                // Standard behavior: Type space, then auto-insert closing tag on next line.
+
+                // Let's insert the Space AND the closing tag.
+                const insertText = " \n<|"; // Space, Newline, EndTag
+
                 view.dispatch({
                     changes: { from: pos, insert: insertText },
-                    selection: { anchor: pos + 1 } // Cursor after ">" (before newline)
+                    selection: { anchor: pos + 1 } // Cursor after the Space
                 });
-                return true; // Handled
+                return true;
             }
             return false;
         }
