@@ -8,7 +8,10 @@ import {
 } from "@codemirror/view";
 import {
     RangeSetBuilder,
-    Extension
+    Extension,
+    EditorState,
+    Text,
+    StateEffect
 } from "@codemirror/state";
 import {
     foldService,
@@ -33,20 +36,19 @@ class ToggleWidget extends WidgetType {
         span.textContent = this.isFolded ? "▶" : "▼";
         span.style.cursor = "pointer";
         span.style.paddingRight = "5px";
+        span.style.userSelect = "none";
 
         span.onclick = (e) => {
             e.preventDefault();
             e.stopPropagation();
 
-            console.log(`[Toggle] Native Click. Currently Folded: ${this.isFolded}`);
+            console.log(`[Toggle] Click. Folded: ${this.isFolded}`);
 
             if (this.isFolded) {
-                // Unfold
                 view.dispatch({
                     effects: unfoldEffect.of({ from: this.foldStart, to: this.foldEnd })
                 });
             } else {
-                // Fold
                 view.dispatch({
                     effects: foldEffect.of({ from: this.foldStart, to: this.foldEnd })
                 });
@@ -60,23 +62,37 @@ class ToggleWidget extends WidgetType {
     }
 }
 
-// 1. Define what can be folded
-const notionFoldService = foldService.of((state, lineStart, lineEnd) => {
-    const line = state.doc.lineAt(lineStart);
-    // Only handle lines starting with |>
-    if (line.text.startsWith(START_TAG)) {
-        for (let i = line.number + 1; i <= state.doc.lines; i++) {
-            const nextLine = state.doc.line(i);
-            if (nextLine.text.startsWith(END_TAG)) {
-                // Fold from end of Header Line to end of End Tag Line
-                return { from: line.to, to: nextLine.to };
+// Helper: Stack Counting for Nested Toggles
+function findMatchingEndLine(doc: Text, startLineNo: number): number {
+    let stack = 1;
+    for (let i = startLineNo + 1; i <= doc.lines; i++) {
+        const lineText = doc.line(i).text;
+        if (lineText.startsWith(START_TAG)) {
+            stack++;
+        } else if (lineText.startsWith(END_TAG)) {
+            stack--;
+            if (stack === 0) {
+                return i;
             }
+        }
+    }
+    return -1;
+}
+
+// 1. Fold Service
+const notionFoldService = foldService.of((state: EditorState, lineStart: number, lineEnd: number) => {
+    const line = state.doc.lineAt(lineStart);
+    if (line.text.startsWith(START_TAG)) {
+        const endLineNo = findMatchingEndLine(state.doc, line.number);
+        if (endLineNo !== -1) {
+            const nextLine = state.doc.line(endLineNo);
+            return { from: line.to, to: nextLine.to };
         }
     }
     return null;
 });
 
-// 2. Render Widgets using ViewPlugin
+// 2. ViewPlugin with Sorting
 const toggleWidgetPlugin = ViewPlugin.fromClass(
     class {
         decorations: DecorationSet;
@@ -86,55 +102,112 @@ const toggleWidgetPlugin = ViewPlugin.fromClass(
         }
 
         update(update: ViewUpdate) {
-            // Rebuild if doc changes or FOLD state changes
-            if (update.docChanged || update.viewportChanged || update.transactions.some(tr => tr.effects.some(e => e.is(foldEffect) || e.is(unfoldEffect)))) {
+            if (update.docChanged || update.viewportChanged || update.transactions.some(tr => tr.effects.some((e: StateEffect<any>) => e.is(foldEffect) || e.is(unfoldEffect)))) {
                 this.decorations = this.buildDecorations(update.view);
             }
         }
 
         buildDecorations(view: EditorView): DecorationSet {
-            const builder = new RangeSetBuilder<Decoration>();
             const doc = view.state.doc;
-            const ranges = foldedRanges(view.state); // Get current valid folds
+            const ranges = foldedRanges(view.state);
+
+            // Collect decorations in an array first
+            interface DecoSpec {
+                from: number;
+                to: number;
+                deco: Decoration;
+            }
+            const decos: DecoSpec[] = [];
+
+            const INDENT_PX = 20;
+
+            // Stack logic for indentation
+            // To do this efficiently via single pass, we can track "open Start Tags".
+            // But strict stack counting requires finding the matching end tag.
+            // Let's iterate lines and use a simpler indentation heuristic or the robust calculation?
+            // Robust calculation for every line is expensive (O(N^2)). (Calling findMatchingEndLine inside loop)
+            // But for now correctness > perf.
+
+            // Actually, Indentation level is just "Current Open Stacks".
+            // We can track a running stack count.
+
+            let stackLevel = 0;
 
             for (let i = 1; i <= doc.lines; i++) {
                 const line = doc.line(i);
-                if (line.text.startsWith(START_TAG)) {
+                const text = line.text;
 
-                    // Find the expected fold range for this line
-                    let endLineNo = -1;
-                    for (let j = i + 1; j <= doc.lines; j++) {
-                        if (doc.line(j).text.startsWith(END_TAG)) {
-                            endLineNo = j;
-                            break;
-                        }
-                    }
+                // Adjust stack level
+                // Logic:
+                // If |> matches a valid block, it increases indent for SUBSEQUENT lines.
+                // If <| matches a valid block, it decreases indent for THIS line and subsequent?
+                // Usually:
+                // Header: Level 0
+                // Content: Level 1
+                // Footer: Level 0
 
+                let lineIndentLevel = stackLevel;
+
+                if (text.startsWith(START_TAG)) {
+                    stackLevel++;
+                } else if (text.startsWith(END_TAG)) {
+                    stackLevel--;
+                    if (stackLevel < 0) stackLevel = 0;
+                    lineIndentLevel = stackLevel;
+                }
+
+                // Add Indentation Decoration
+                if (lineIndentLevel > 0) {
+                    decos.push({
+                        from: line.from,
+                        to: line.from,
+                        deco: Decoration.line({
+                            attributes: { style: `padding-left: ${lineIndentLevel * INDENT_PX}px` }
+                        })
+                    });
+                }
+
+                // Add Widget Decoration for Headers
+                if (text.startsWith(START_TAG)) {
+                    const endLineNo = findMatchingEndLine(doc, i);
                     if (endLineNo !== -1) {
                         const foldStart = line.to;
                         const foldEnd = doc.line(endLineNo).to;
 
-                        // Check if this specific range is currently folded?
-                        // foldedRanges.iter returns ranges. We check if ours is covered.
-                        // Actually, simplified check: is the point immediately after line.to inside a folded range?
-
                         let isFolded = false;
-                        ranges.between(foldStart, foldEnd, (from, to) => {
+                        ranges.between(foldStart, foldEnd, (from: number, to: number) => {
                             if (from === foldStart && to === foldEnd) {
                                 isFolded = true;
                             }
                         });
 
-                        builder.add(
-                            line.from,
-                            line.from + START_TAG.length,
-                            Decoration.replace({
+                        decos.push({
+                            from: line.from,
+                            to: line.from + START_TAG.length,
+                            deco: Decoration.replace({
                                 widget: new ToggleWidget(isFolded, foldStart, foldEnd),
                                 inclusive: true
                             })
-                        );
+                        });
                     }
                 }
+            }
+
+            // SORT DECORATIONS
+            // RangeSetBuilder requires strict sort.
+            decos.sort((a, b) => {
+                if (a.from !== b.from) return a.from - b.from;
+                // If same start position, order matters?
+                // Line decorations are usually attached to line start.
+                // Replace decorations are range.
+                // startSide default is 0.
+                // Let's rely on standard stability.
+                return a.to - b.to;
+            });
+
+            const builder = new RangeSetBuilder<Decoration>();
+            for (const d of decos) {
+                builder.add(d.from, d.to, d.deco);
             }
             return builder.finish();
         }
