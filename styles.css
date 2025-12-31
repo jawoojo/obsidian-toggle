@@ -1,9 +1,50 @@
 /* [PRD 3.2.3] Toggle Background Highlight */
+/* [PRD 3.2.3] Toggle Background Highlight */
 .toggle-bg {
-    background-color: var(--background-secondary);
     border-radius: 4px;
-    /* Optional: Add some padding to the text if needed, but line decoration handles bg */
-    /* padding-left: 4px; */
+    /* Base style, color is handled by level classes below */
+}
+
+/* Nested Levels - Light Mode (Darken 5% per level) */
+.theme-light .toggle-bg-level-1 {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.theme-light .toggle-bg-level-2 {
+    background-color: rgba(0, 0, 0, 0.10);
+}
+
+.theme-light .toggle-bg-level-3 {
+    background-color: rgba(0, 0, 0, 0.15);
+}
+
+.theme-light .toggle-bg-level-4 {
+    background-color: rgba(0, 0, 0, 0.20);
+}
+
+.theme-light .toggle-bg-level-5 {
+    background-color: rgba(0, 0, 0, 0.25);
+}
+
+/* Nested Levels - Dark Mode (Lighten 5% per level) */
+.theme-dark .toggle-bg-level-1 {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.theme-dark .toggle-bg-level-2 {
+    background-color: rgba(255, 255, 255, 0.10);
+}
+
+.theme-dark .toggle-bg-level-3 {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.theme-dark .toggle-bg-level-4 {
+    background-color: rgba(255, 255, 255, 0.20);
+}
+
+.theme-dark .toggle-bg-level-5 {
+    background-color: rgba(255, 255, 255, 0.25);
 }
 
 /* [PRD 3.2.2] Notion-like Triangle Style */

@@ -281,13 +281,15 @@ const togglePlugin = ViewPlugin.fromClass(
                 const line = doc.line(i);
                 const text = line.text;
 
-                // 1. Background Highlight
+                // 1. Background Highlight (Notion Callout Style)
                 if (currentLevel > 0) {
+                    // Cap level at 5 for styling to prevent excessive CSS
+                    const safeLevel = Math.min(currentLevel, 5);
                     decos.push({
                         from: line.from,
                         to: line.from,
                         deco: Decoration.line({
-                            class: "toggle-bg"
+                            class: `toggle-bg toggle-bg-level-${safeLevel}`
                         })
                     });
                 }
