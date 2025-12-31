@@ -5,6 +5,17 @@
     /* Base style, color is handled by level classes below */
 }
 
+/* [NEW] Continuous Block Helpers */
+.toggle-bg-no-top {
+    border-top-left-radius: 0 !important;
+    border-top-right-radius: 0 !important;
+}
+
+.toggle-bg-no-bot {
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+}
+
 /* Nested Levels - Light Mode (Darken 5% per level) */
 .theme-light .toggle-bg-level-1 {
     background-color: rgba(0, 0, 0, 0.05);

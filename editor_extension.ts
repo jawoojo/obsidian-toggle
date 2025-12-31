@@ -273,26 +273,45 @@ const togglePlugin = ViewPlugin.fromClass(
 
             // --- B. Build Decorations ---
             let currentLevel = 0;
-            // [New] Orphan Detection Stack
+            let prevLevel = 0; // [New] Track previous line's level
+            // Orphan Detection Stack
             let runningStack = 0;
 
             for (let i = 1; i <= lineCount; i++) {
                 currentLevel += diff[i];
+                // [New] Peek next level
+                const nextLevel = currentLevel + (i + 1 < diff.length ? diff[i + 1] : 0);
+
                 const line = doc.line(i);
                 const text = line.text;
 
                 // 1. Background Highlight (Notion Callout Style)
                 if (currentLevel > 0) {
-                    // Cap level at 5 for styling to prevent excessive CSS
+                    // Cap level at 5 for styling
                     const safeLevel = Math.min(currentLevel, 5);
+                    let classNames = `toggle-bg toggle-bg-level-${safeLevel}`;
+
+                    // [New] Continuous Background Logic
+                    // If matched previous line -> No Top Radius
+                    if (currentLevel === prevLevel) {
+                        classNames += " toggle-bg-no-top";
+                    }
+                    // If matches next line -> No Bottom Radius
+                    if (currentLevel === nextLevel) {
+                        classNames += " toggle-bg-no-bot";
+                    }
+
                     decos.push({
                         from: line.from,
                         to: line.from,
                         deco: Decoration.line({
-                            class: `toggle-bg toggle-bg-level-${safeLevel}`
+                            class: classNames
                         })
                     });
                 }
+
+                // Update prevLevel for next iteration
+                prevLevel = currentLevel;
 
                 // 2. Start Widget ("|> " -> Triangle)
                 if (text.startsWith(START_TAG)) {
