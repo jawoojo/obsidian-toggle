@@ -25,6 +25,7 @@ import {
 // Constants
 const START_TAG = "|> ";
 const END_TAG = "<|";
+const INDENT_STEP = 24; // 24px per level
 
 // [PRD 3.1.1] Start Widget (Triangle)
 class ToggleWidget extends WidgetType {
@@ -37,8 +38,6 @@ class ToggleWidget extends WidgetType {
         span.className = "toggle-widget";
         span.textContent = this.isFolded ? "▶" : "▼";
         span.style.cursor = "pointer";
-        span.style.paddingRight = "5px";
-        span.style.userSelect = "none";
 
         span.onclick = (e) => {
             e.preventDefault();
@@ -57,9 +56,7 @@ class ToggleWidget extends WidgetType {
         return span;
     }
 
-    ignoreEvent(): boolean {
-        return true;
-    }
+    ignoreEvent(): boolean { return true; }
 }
 
 // [New] End Widget (Horizontal Line)
@@ -68,6 +65,20 @@ class EndTagWidget extends WidgetType {
         const div = document.createElement("div");
         div.className = "toggle-end-widget";
         return div;
+    }
+    ignoreEvent(): boolean { return true; }
+}
+
+// [New] Spacer Widget (For indentation)
+class SpacerWidget extends WidgetType {
+    constructor(readonly width: number) {
+        super();
+    }
+    toDOM(view: EditorView): HTMLElement {
+        const span = document.createElement("span");
+        span.className = "toggle-spacer";
+        span.style.width = `${this.width}px`;
+        return span;
     }
     ignoreEvent(): boolean { return true; }
 }
@@ -153,7 +164,7 @@ const togglePlugin = ViewPlugin.fromClass(
                 }
             }
 
-            // --- B. Build Decorations (Indent + Widget) ---
+            // --- B. Build Decorations (Spacer + Widget) ---
             let currentLevel = 0;
 
             for (let i = 1; i <= lineCount; i++) {
@@ -161,14 +172,16 @@ const togglePlugin = ViewPlugin.fromClass(
                 const line = doc.line(i);
                 const text = line.text;
 
-                // 1. Indentation (using margin-left via CSS)
+                // 1. Indentation (using SpacerWidget)
+                // We inject a widget at the very start of the line content.
                 if (currentLevel > 0) {
-                    const safeLevel = Math.min(currentLevel, 10);
+                    const indentPx = currentLevel * INDENT_STEP;
                     decos.push({
                         from: line.from,
                         to: line.from,
-                        deco: Decoration.line({
-                            attributes: { class: `toggle-indent-${safeLevel}` }
+                        deco: Decoration.widget({
+                            widget: new SpacerWidget(indentPx),
+                            side: -1 // To appear before content
                         })
                     });
                 }
@@ -212,6 +225,10 @@ const togglePlugin = ViewPlugin.fromClass(
             // Sort decorations
             decos.sort((a, b) => {
                 if (a.from !== b.from) return a.from - b.from;
+                // Widget (side -1) comes before Replace?
+                // Both essentially at same position or overlapping.
+                // Replace is range [from, from+3]. Spacer is point [from].
+                // Point should come before Range if at same start pos.
                 return a.to - b.to;
             });
 
@@ -229,45 +246,30 @@ const togglePlugin = ViewPlugin.fromClass(
 );
 
 // 3. Auto-Close Keymap (Trigger on Space)
-const autoCloseKeymap = KeymapListener();
+const autoCloseKeymap = Prec.highest(keymap.of([{
+    key: "Space",
+    run: (view: EditorView) => {
+        const state = view.state;
+        const ranges = state.selection.ranges;
+        if (ranges.length !== 1) return false;
 
-function KeymapListener(): Extension {
-    return Prec.highest(keymap.of([{
-        key: "Space",
-        run: (view: EditorView) => {
-            const state = view.state;
-            const ranges = state.selection.ranges;
-            if (ranges.length !== 1) return false;
+        const range = ranges[0];
+        if (!range.empty) return false;
 
-            const range = ranges[0];
-            if (!range.empty) return false;
+        const pos = range.head;
+        const prevChars = state.doc.sliceString(pos - 2, pos);
 
-            const pos = range.head;
-            // Check previous 2 chars: "|>"
-            const prevChars = state.doc.sliceString(pos - 2, pos);
-
-            if (prevChars === "|>") {
-                // Ensure it's at start of line or clean context? 
-                // User requirement: "|> " triggers it.
-
-                // Insert " \n<|"
-                // Actually user types Space. We let Space happen? 
-                // Or we replace the Space with the structure?
-                // Standard behavior: Type space, then auto-insert closing tag on next line.
-
-                // Let's insert the Space AND the closing tag.
-                const insertText = " \n<|"; // Space, Newline, EndTag
-
-                view.dispatch({
-                    changes: { from: pos, insert: insertText },
-                    selection: { anchor: pos + 1 } // Cursor after the Space
-                });
-                return true;
-            }
-            return false;
+        if (prevChars === "|>") {
+            const insertText = " \n<|";
+            view.dispatch({
+                changes: { from: pos, insert: insertText },
+                selection: { anchor: pos + 1 }
+            });
+            return true;
         }
-    }]));
-}
+        return false;
+    }
+}]));
 
 export const toggleExtension: Extension = [
     notionFoldService,

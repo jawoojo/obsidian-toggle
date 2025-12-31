@@ -1,61 +1,12 @@
 /* [PRD 3.2.2] Toggle Indentation Classes */
-/* Step size: 24px (User Requested) */
-/* Reverted to padding-left but with background-clip to prevent color bleed */
-
-.toggle-indent-1 {
-    padding-left: 24px !important;
-}
-
-.toggle-indent-2 {
-    padding-left: 48px !important;
-}
-
-.toggle-indent-3 {
-    padding-left: 72px !important;
-}
-
-.toggle-indent-4 {
-    padding-left: 96px !important;
-}
-
-.toggle-indent-5 {
-    padding-left: 120px !important;
-}
-
-.toggle-indent-6 {
-    padding-left: 144px !important;
-}
-
-.toggle-indent-7 {
-    padding-left: 168px !important;
-}
-
-.toggle-indent-8 {
-    padding-left: 192px !important;
-}
-
-.toggle-indent-9 {
-    padding-left: 216px !important;
-}
-
-.toggle-indent-10 {
-    padding-left: 240px !important;
-}
-
-/* Critical Fix for Background Bleed */
-.cm-line.toggle-indent-1,
-.cm-line.toggle-indent-2,
-.cm-line.toggle-indent-3,
-.cm-line.toggle-indent-4,
-.cm-line.toggle-indent-5,
-.cm-line.toggle-indent-6,
-.cm-line.toggle-indent-7,
-.cm-line.toggle-indent-8,
-.cm-line.toggle-indent-9,
-.cm-line.toggle-indent-10 {
-    box-sizing: border-box;
-    /* Ensures background color (like code blocks) only paints the CONTENT box, not the padding */
-    background-clip: content-box !important;
+/* Spacer Widget Style (Inline Span) */
+.toggle-spacer {
+    display: inline-block;
+    height: 1em;
+    /* Match line height roughly */
+    vertical-align: top;
+    /* Background transparent */
+    pointer-events: none;
 }
 
 /* [PRD 3.2.2] Notion-like Triangle Style */
@@ -66,6 +17,8 @@
     transition: transform 0.2s ease;
     vertical-align: middle;
     user-select: none;
+    margin-right: 4px;
+    /* Space between triangle and text */
 }
 
 .toggle-widget:hover {
@@ -73,12 +26,18 @@
 }
 
 /* [NEW] End Tag Line Style (<|) */
+/* Thicker and Darker as requested */
 .toggle-end-widget {
     display: block;
     width: 100%;
-    height: 1px;
-    background-color: var(--background-modifier-border);
-    margin-top: 5px;
-    margin-bottom: 5px;
-    opacity: 0.5;
+    height: 2px;
+    /* Thicker */
+    background-color: var(--text-normal);
+    /* Darker (matches text) */
+    margin-top: 8px;
+    margin-bottom: 8px;
+    opacity: 0.8;
+    /* More visible */
+    border-radius: 2px;
+    /* Soft edges */
 }
