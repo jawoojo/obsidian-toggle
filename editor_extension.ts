@@ -25,7 +25,7 @@ import {
 // Constants
 const START_TAG = "|> ";
 const END_TAG = "<|";
-const INDENT_STEP = 24; // 24px per level
+const INDENT_STEP = 16.5; // Restored Base Grid (16.5px)
 
 // [PRD 3.1.1] Start Widget (Triangle)
 class ToggleWidget extends WidgetType {
@@ -282,7 +282,7 @@ const togglePlugin = ViewPlugin.fromClass(
                     // Let's try aligning with Content as requested?
                     // "Until the indentation ends" -> imply covering the whole block.
                     // Actually, let's keep it simple: The END tag should align with the START tag usually.
-                    // But if user says "it's not indented", maybe they nest deeply and the <| is at root 0?
+                    // But user says "it's not indented", maybe they nest deeply and the <| is at root 0?
                     // Ah, my logic `findMatchingEndLine` finds the matching tag.
                     // The levels are cumulative.
                     // Start Tag (L0) -> Content (L1) -> End Tag (L0).
@@ -304,7 +304,12 @@ const togglePlugin = ViewPlugin.fromClass(
                 const line = doc.line(i);
                 const text = line.text;
 
-                const indentPx = currentLevel > 0 ? currentLevel * INDENT_STEP : 0;
+                // [Logic Change] User's Specific Measurements
+                // Level 1: 12.5px
+                // Level 2+: 12.5px + (Level - 1) * 16.5px
+                const indentPx = currentLevel > 0
+                    ? (currentLevel === 1 ? 12.5 : (12.5 + (currentLevel - 1) * INDENT_STEP))
+                    : 0;
 
                 // 1. Indentation (using SpacerWidget)
                 // [Logic Change] For END_TAG lines, we handle indent inside the EndTagWidget itself.
