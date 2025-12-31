@@ -1,17 +1,5 @@
 /* [PRD 3.2.2] Toggle Indentation Classes */
-/* Spacer Widget Style (Inline Span) */
-.toggle-spacer {
-    display: inline-block;
-    height: 1em;
-    vertical-align: top;
-    pointer-events: none;
-    /* [Fix] Remove margin-right for exact alignment with padding */
-    margin-right: 0;
-
-    /* [DEBUG] Pink Brick */
-    background-color: rgba(255, 105, 180, 0.5);
-    z-index: 1000;
-}
+/* Spacer Removed */
 
 /* [PRD 3.2.2] Notion-like Triangle Style */
 .toggle-widget {

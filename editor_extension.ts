@@ -90,19 +90,8 @@ class EndTagWidget extends WidgetType {
     ignoreEvent(): boolean { return false; }
 }
 
-// [New] Spacer Widget (For indentation)
-class SpacerWidget extends WidgetType {
-    constructor(readonly width: number) {
-        super();
-    }
-    toDOM(view: EditorView): HTMLElement {
-        const span = document.createElement("span");
-        span.className = "toggle-spacer";
-        span.style.width = `${this.width}px`;
-        return span;
-    }
-    ignoreEvent(): boolean { return true; }
-}
+// [Refactor] SpacerWidget Removed
+// class SpacerWidget extends WidgetType { ... }
 
 // Helper: Stack Counting
 function findMatchingEndLine(doc: Text, startLineNo: number): number {
@@ -199,7 +188,9 @@ const notionFoldService = foldService.of((state: EditorState, lineStart: number,
     return null;
 });
 
-// 2. ViewPlugin (Indentation + Widgets)
+
+
+// [Simplified] Toggle Plugin (No Indentation Logic)
 const togglePlugin = ViewPlugin.fromClass(
     class {
         decorations: DecorationSet;
@@ -210,29 +201,6 @@ const togglePlugin = ViewPlugin.fromClass(
 
         update(update: ViewUpdate) {
             let shouldUpdate = update.docChanged || update.viewportChanged || update.transactions.some(tr => tr.effects.some((e: StateEffect<any>) => e.is(foldEffect) || e.is(unfoldEffect)));
-
-            // Optimization: Only update on selection change if we are interacting with an END_TAG
-            if (!shouldUpdate && update.selectionSet) {
-                const hasOverlap = (state: EditorState) => {
-                    for (const range of state.selection.ranges) {
-                        const line = state.doc.lineAt(range.head);
-                        if (line.text.startsWith(END_TAG)) {
-                            // Check intersection with tag: [line.from, line.from + len]
-                            if (range.from <= line.from + END_TAG.length && range.to >= line.from) return true;
-                        }
-                    }
-                    return false;
-                };
-
-                const prevOverlap = hasOverlap(update.startState);
-                const currOverlap = hasOverlap(update.state);
-
-                // If we were on a tag (need to hide) OR are now on a tag (need to reveal), update.
-                if (prevOverlap || currOverlap) {
-                    shouldUpdate = true;
-                }
-            }
-
             if (shouldUpdate) {
                 this.decorations = this.buildDecorations(update.view);
             }
@@ -251,101 +219,11 @@ const togglePlugin = ViewPlugin.fromClass(
             }
             const decos: DecoSpec[] = [];
 
-            // --- A. Indentation Logic (O(N)) ---
-            const openStack: number[] = [];
-            const validRanges: { start: number, end: number }[] = [];
-
             for (let i = 1; i <= lineCount; i++) {
-                const lineText = doc.line(i).text;
-                if (lineText.startsWith(START_TAG)) {
-                    openStack.push(i);
-                } else if (lineText.startsWith(END_TAG)) {
-                    if (openStack.length > 0) {
-                        const start = openStack.pop()!;
-                        validRanges.push({ start, end: i });
-                    }
-                }
-            }
-
-            const diff = new Int32Array(lineCount + 2);
-            for (const range of validRanges) {
-                if (range.end > range.start + 1) {
-                    diff[range.start + 1]++;
-
-                    // [Fix] User wants the End Tag line to also be indented.
-                    // Previously: diff[range.end]-- (End Tag drops back to Parent Level)
-                    // Now: diff[range.end + 1]-- (End Tag stays at Content Level, drops AFTER)
-                    // Wait, standard coding style: } aligns with { (Parent Level).
-                    // But user request: "The <| line starting position is not indented... insert bricks".
-                    // If user literally wants the line to start indented, I should include it.
-                    // BUT, if I indent it, it aligns with content, not the start tag.
-                    // Let's try aligning with Content as requested?
-                    // "Until the indentation ends" -> imply covering the whole block.
-                    // Actually, let's keep it simple: The END tag should align with the START tag usually.
-                    // But user says "it's not indented", maybe they nest deeply and the <| is at root 0?
-                    // Ah, my logic `findMatchingEndLine` finds the matching tag.
-                    // The levels are cumulative.
-                    // Start Tag (L0) -> Content (L1) -> End Tag (L0).
-                    // If user wants End Tag to be L1? That's unusual but I will follow "Insert bricks" instruction.
-
-                    // Actually, if I change to diff[range.end + 1]--, the End Tag gets L1.
-                    // If I change to diff[range.end]--, the End Tag gets L0.
-
-                    // Let's assume User wants End Tag to align with CONTENT (L1).
-                    diff[range.end + 1]--;
-                }
-            }
-
-            // --- B. Build Decorations (Spacer + Widget) ---
-            let currentLevel = 0;
-
-            for (let i = 1; i <= lineCount; i++) {
-                currentLevel += diff[i];
                 const line = doc.line(i);
                 const text = line.text;
 
-                // [Logic Change] User's Specific Measurements
-                // Level 1: 12.5px
-                // Level 2+: 12.5px + (Level - 1) * 16.5px
-                const indentPx = currentLevel > 0
-                    ? (currentLevel === 1 ? 12.5 : (12.5 + (currentLevel - 1) * INDENT_STEP))
-                    : 0;
-
-                // 1. Indentation (using SpacerWidget)
-                // [Logic Change] For END_TAG lines, we handle indent inside the EndTagWidget itself.
-                // For all other lines, we use the SpacerWidget.
-                // 1. Indentation (Hybrid Method: Hanging Indent)
-                // [PRD 2.3] Wrapping Strategy:
-                // - padding-left: Indents the WHOLE block (Lines 2+ are consistent).
-                // - text-indent: Pulls the FIRST line back to 0.
-                // - SpacerWidget: Fills the gap on the first line physically.
-                if (currentLevel > 0) {
-                    decos.push({
-                        from: line.from,
-                        to: line.from,
-                        deco: Decoration.line({
-                            attributes: {
-                                // !important to override Obsidian defaults
-                                style: `padding-left: ${indentPx}px !important; text-indent: -${indentPx}px !important;`
-                            },
-                            class: "toggle-indent-line"
-                        })
-                    });
-                }
-
-                // [Spacer] Physical Brick for First Line Stability
-                if (currentLevel > 0 && !text.startsWith(END_TAG)) {
-                    decos.push({
-                        from: line.from,
-                        to: line.from,
-                        deco: Decoration.widget({
-                            widget: new SpacerWidget(indentPx),
-                            side: -1
-                        })
-                    });
-                }
-
-                // 2. Start Widget ("|> " -> Triangle)
+                // 1. Start Widget ("|> " -> Triangle)
                 if (text.startsWith(START_TAG)) {
                     const endLineNo = findMatchingEndLine(doc, i);
                     if (endLineNo !== -1) {
@@ -368,58 +246,22 @@ const togglePlugin = ViewPlugin.fromClass(
                     }
                 }
 
-                // 3. End Widget ("<|" -> Horizontal Line)
+                // 2. End Widget ("<|" -> Horizontal Line)
                 if (text.startsWith(END_TAG)) {
                     const rangeFrom = line.from;
                     const rangeTo = line.from + END_TAG.length;
 
-                    // [New Logic] Reveal on Click/Selection
-                    // Check if any cursor overlaps with this range
-                    let isSelected = false;
-                    for (const r of selection.ranges) {
-                        if (r.to >= rangeFrom && r.from <= rangeTo) {
-                            isSelected = true;
-                            break;
-                        }
-                    }
-
-                    // Only replace if NOT selected
-                    if (!isSelected) {
-                        decos.push({
-                            from: rangeFrom,
-                            to: rangeTo,
-                            deco: Decoration.replace({
-                                // Pass indentPx here directly
-                                widget: new EndTagWidget(rangeFrom, indentPx),
-                                inclusive: true
-                            })
-                        });
-                    } else {
-                        // If selected (revealed), we MUST add the SpacerWidget manually 
-                        // because we skipped it in step 1.
-                        if (currentLevel > 0) {
-                            decos.push({
-                                from: line.from,
-                                to: line.from,
-                                deco: Decoration.widget({
-                                    widget: new SpacerWidget(indentPx),
-                                    side: -1
-                                })
-                            });
-                        }
-                    }
+                    // Simple replacement, no indent logic
+                    decos.push({
+                        from: rangeFrom,
+                        to: rangeTo,
+                        deco: Decoration.replace({
+                            widget: new EndTagWidget(rangeFrom, 0), // 0 indent
+                            inclusive: true
+                        })
+                    });
                 }
             }
-
-            // Sort decorations
-            decos.sort((a, b) => {
-                if (a.from !== b.from) return a.from - b.from;
-                // Widget (side -1) comes before Replace?
-                // Both essentially at same position or overlapping.
-                // Replace is range [from, from+3]. Spacer is point [from].
-                // Point should come before Range if at same start pos.
-                return a.to - b.to;
-            });
 
             const builder = new RangeSetBuilder<Decoration>();
             for (const d of decos) {
