@@ -25,7 +25,7 @@ import {
 // Constants
 const START_TAG = "|> ";
 const END_TAG = "<|";
-const INDENT_STEP = 24; // 24px per level
+// Note: Indent size is controlled by CSS classes now
 
 // [PRD 3.1.1] Start Widget (Triangle)
 class ToggleWidget extends WidgetType {
@@ -38,6 +38,8 @@ class ToggleWidget extends WidgetType {
         span.className = "toggle-widget";
         span.textContent = this.isFolded ? "▶" : "▼";
         span.style.cursor = "pointer";
+        span.style.paddingRight = "5px";
+        span.style.userSelect = "none";
 
         span.onclick = (e) => {
             e.preventDefault();
@@ -65,20 +67,6 @@ class EndTagWidget extends WidgetType {
         const div = document.createElement("div");
         div.className = "toggle-end-widget";
         return div;
-    }
-    ignoreEvent(): boolean { return true; }
-}
-
-// [New] Spacer Widget (For indentation)
-class SpacerWidget extends WidgetType {
-    constructor(readonly width: number) {
-        super();
-    }
-    toDOM(view: EditorView): HTMLElement {
-        const span = document.createElement("span");
-        span.className = "toggle-spacer";
-        span.style.width = `${this.width}px`;
-        return span;
     }
     ignoreEvent(): boolean { return true; }
 }
@@ -164,7 +152,7 @@ const togglePlugin = ViewPlugin.fromClass(
                 }
             }
 
-            // --- B. Build Decorations (Spacer + Widget) ---
+            // --- B. Build Decorations (Indent + Widget) ---
             let currentLevel = 0;
 
             for (let i = 1; i <= lineCount; i++) {
@@ -172,16 +160,15 @@ const togglePlugin = ViewPlugin.fromClass(
                 const line = doc.line(i);
                 const text = line.text;
 
-                // 1. Indentation (using SpacerWidget)
-                // We inject a widget at the very start of the line content.
+                // 1. Indentation Logic (Margin-Based)
+                // Applies CSS class to the Line Element itself.
                 if (currentLevel > 0) {
-                    const indentPx = currentLevel * INDENT_STEP;
+                    const safeLevel = Math.min(currentLevel, 10);
                     decos.push({
                         from: line.from,
                         to: line.from,
-                        deco: Decoration.widget({
-                            widget: new SpacerWidget(indentPx),
-                            side: -1 // To appear before content
+                        deco: Decoration.line({
+                            attributes: { class: `toggle-indent-${safeLevel}` }
                         })
                     });
                 }
@@ -225,10 +212,6 @@ const togglePlugin = ViewPlugin.fromClass(
             // Sort decorations
             decos.sort((a, b) => {
                 if (a.from !== b.from) return a.from - b.from;
-                // Widget (side -1) comes before Replace?
-                // Both essentially at same position or overlapping.
-                // Replace is range [from, from+3]. Spacer is point [from].
-                // Point should come before Range if at same start pos.
                 return a.to - b.to;
             });
 
