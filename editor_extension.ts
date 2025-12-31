@@ -61,12 +61,27 @@ class ToggleWidget extends WidgetType {
 
 // [New] End Widget (Horizontal Line)
 class EndTagWidget extends WidgetType {
+    constructor(readonly pos: number) {
+        super();
+    }
+
     toDOM(view: EditorView): HTMLElement {
         const div = document.createElement("div");
         div.className = "toggle-end-widget";
+
+        // Allow clicking the line to set cursor
+        div.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            view.dispatch({
+                selection: { anchor: this.pos }
+            });
+            view.focus();
+        };
         return div;
     }
-    ignoreEvent(): boolean { return true; }
+
+    ignoreEvent(): boolean { return false; }
 }
 
 // [New] Spacer Widget (For indentation)
@@ -123,7 +138,31 @@ const togglePlugin = ViewPlugin.fromClass(
         }
 
         update(update: ViewUpdate) {
-            if (update.docChanged || update.viewportChanged || update.transactions.some(tr => tr.effects.some((e: StateEffect<any>) => e.is(foldEffect) || e.is(unfoldEffect)))) {
+            let shouldUpdate = update.docChanged || update.viewportChanged || update.transactions.some(tr => tr.effects.some((e: StateEffect<any>) => e.is(foldEffect) || e.is(unfoldEffect)));
+
+            // Optimization: Only update on selection change if we are interacting with an END_TAG
+            if (!shouldUpdate && update.selectionSet) {
+                const hasOverlap = (state: EditorState) => {
+                    for (const range of state.selection.ranges) {
+                        const line = state.doc.lineAt(range.head);
+                        if (line.text.startsWith(END_TAG)) {
+                            // Check intersection with tag: [line.from, line.from + len]
+                            if (range.from <= line.from + END_TAG.length && range.to >= line.from) return true;
+                        }
+                    }
+                    return false;
+                };
+
+                const prevOverlap = hasOverlap(update.startState);
+                const currOverlap = hasOverlap(update.state);
+
+                // If we were on a tag (need to hide) OR are now on a tag (need to reveal), update.
+                if (prevOverlap || currOverlap) {
+                    shouldUpdate = true;
+                }
+            }
+
+            if (shouldUpdate) {
                 this.decorations = this.buildDecorations(update.view);
             }
         }
@@ -132,6 +171,7 @@ const togglePlugin = ViewPlugin.fromClass(
             const doc = view.state.doc;
             const lineCount = doc.lines;
             const ranges = foldedRanges(view.state);
+            const selection = view.state.selection;
 
             interface DecoSpec {
                 from: number;
@@ -211,14 +251,30 @@ const togglePlugin = ViewPlugin.fromClass(
 
                 // 3. End Widget ("<|" -> Horizontal Line)
                 if (text.startsWith(END_TAG)) {
-                    decos.push({
-                        from: line.from,
-                        to: line.from + END_TAG.length,
-                        deco: Decoration.replace({
-                            widget: new EndTagWidget(),
-                            inclusive: true
-                        })
-                    });
+                    const rangeFrom = line.from;
+                    const rangeTo = line.from + END_TAG.length;
+
+                    // [New Logic] Reveal on Click/Selection
+                    // Check if any cursor overlaps with this range
+                    let isSelected = false;
+                    for (const r of selection.ranges) {
+                        if (r.to >= rangeFrom && r.from <= rangeTo) {
+                            isSelected = true;
+                            break;
+                        }
+                    }
+
+                    // Only replace if NOT selected
+                    if (!isSelected) {
+                        decos.push({
+                            from: rangeFrom,
+                            to: rangeTo,
+                            deco: Decoration.replace({
+                                widget: new EndTagWidget(rangeFrom),
+                                inclusive: true
+                            })
+                        });
+                    }
                 }
             }
 
