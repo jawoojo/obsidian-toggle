@@ -1,82 +1,12 @@
 /* [PRD 3.2.2] Toggle Indentation Classes */
-/* Strategy: Padding + Box Model Control (Expert Solution) */
-/* Solves both background bleed and border indentation issues */
-
-/* 1. Basic Indentation (Padding) */
-.toggle-indent-1 {
-    padding-left: 24px !important;
-}
-
-.toggle-indent-2 {
-    padding-left: 48px !important;
-}
-
-.toggle-indent-3 {
-    padding-left: 72px !important;
-}
-
-.toggle-indent-4 {
-    padding-left: 96px !important;
-}
-
-.toggle-indent-5 {
-    padding-left: 120px !important;
-}
-
-.toggle-indent-6 {
-    padding-left: 144px !important;
-}
-
-.toggle-indent-7 {
-    padding-left: 168px !important;
-}
-
-.toggle-indent-8 {
-    padding-left: 192px !important;
-}
-
-.toggle-indent-9 {
-    padding-left: 216px !important;
-}
-
-.toggle-indent-10 {
-    padding-left: 240px !important;
-}
-
-/* 2. Universal Control for Indented Lines */
-[class*="toggle-indent-"] {
-    /* Prevents background colors (Code Blocks, Callouts) from painting the padding area */
-    background-clip: content-box !important;
-
-    /* Ensure box sizing includes padding for width calculation */
-    box-sizing: border-box !important;
-    display: block;
-}
-
-/* 3. Header Underline Fix (Simulated Border) */
-/* Replaces standard border-bottom with a gradient that respects padding */
-
-/* Target Obsidian Headers that are indented */
-.cm-line[class*="toggle-indent-"].HyperMD-header {
-    /* Remove default border */
-    border-bottom: none !important;
-
-    /* Create fake border using gradient */
-    /* Uses text color (currentColor) or specific header vars if available */
-    background-image: linear-gradient(to right, var(--h1-color, currentColor), var(--h1-color, currentColor));
-
-    /* Size: 100% width, 1px height (bottom line) */
-    background-size: 100% 1px;
-    background-position: bottom;
-    background-repeat: no-repeat;
-
-    /* Key: Draw background inside content box (excluding padding) */
-    background-origin: content-box;
-}
-
-/* 4. Active Line Highlight Fix */
-.cm-activeLine .cm-line[class*="toggle-indent-"] {
-    background-clip: content-box !important;
+/* Spacer Widget Style (Inline Span) */
+.toggle-spacer {
+    display: inline-block;
+    height: 1em;
+    /* Match line height roughly */
+    vertical-align: top;
+    /* Background transparent */
+    pointer-events: none;
 }
 
 /* [PRD 3.2.2] Notion-like Triangle Style */
@@ -88,6 +18,7 @@
     vertical-align: middle;
     user-select: none;
     margin-right: 4px;
+    /* Space between triangle and text */
 }
 
 .toggle-widget:hover {
@@ -95,13 +26,18 @@
 }
 
 /* [NEW] End Tag Line Style (<|) */
+/* Thicker and Darker as requested */
 .toggle-end-widget {
     display: block;
     width: 100%;
     height: 2px;
+    /* Thicker */
     background-color: var(--text-normal);
-    margin-top: 6px;
-    margin-bottom: 6px;
-    opacity: 1.0;
-    border-radius: 1px;
+    /* Darker (matches text) */
+    margin-top: 8px;
+    margin-bottom: 8px;
+    opacity: 0.8;
+    /* More visible */
+    border-radius: 2px;
+    /* Soft edges */
 }
