@@ -121,16 +121,81 @@ function findMatchingEndLine(doc: Text, startLineNo: number): number {
     return -1;
 }
 
-// 1. Fold Service
+// 1. Fold Service (Enhanced for Scoped Headers)
 const notionFoldService = foldService.of((state: EditorState, lineStart: number, lineEnd: number) => {
     const line = state.doc.lineAt(lineStart);
-    if (line.text.startsWith(START_TAG)) {
+    const text = line.text;
+
+    // Case 1: Toggle Fold (|> ...)
+    if (text.startsWith(START_TAG)) {
         const endLineNo = findMatchingEndLine(state.doc, line.number);
         if (endLineNo !== -1) {
             const nextLine = state.doc.line(endLineNo);
             return { from: line.to, to: nextLine.to };
         }
     }
+
+    // Case 2: Scoped Header Fold (## ... inside |>)
+    // Goal: Prevent Header fold from eating the <| tag.
+    if (text.trimStart().startsWith("#")) {
+        // 1. Identify Header Level
+        const match = text.match(/^(#+)\s/);
+        if (!match) return null;
+        const headerLevel = match[1].length;
+
+        // 2. Scan downwards for the fold end
+        const doc = state.doc;
+        let endLineNo = -1;
+
+        // We need to track Toggle Depth to know if a <| belongs to our parent toggle
+        // Simple heuristic: If we encounter a <| that brings stack to 0 relative to where we started?
+        // Actually, we just want to stop at the FIRST <| that closes the Current Scope, 
+        // OR the next Header.
+        // Wait, simply scanning down:
+        // - If we hit a Header <= currentLevel -> Stop (Standard Header behavior)
+        // - If we hit a <| -> Check if it closes a toggle started *after* the header? 
+        //   No, if the header is inside a toggle, "unmatched" <| means end of parent scope.
+
+        let toggleStack = 0; // Tracks toggles started WITHIN this header block
+
+        for (let i = line.number + 1; i <= doc.lines; i++) {
+            const nextLineText = doc.line(i).text;
+
+            // A. Check for nested Toggles
+            if (nextLineText.startsWith(START_TAG)) {
+                toggleStack++;
+            }
+            else if (nextLineText.startsWith(END_TAG)) {
+                if (toggleStack > 0) {
+                    toggleStack--; // Closes a nested toggle, continue
+                } else {
+                    // B. Found a <| that closes the SURROUNDING context
+                    // This is our hard stop. The header must yield to the parent toggle.
+                    endLineNo = i - 1; // Stop at the line BEFORE the end tag
+                    break;
+                }
+            }
+
+            // C. Check for Next Header
+            // Only relevant if not inside a nested toggle (actually headers don't nest inside toggles usually physically, but logically)
+            // CodeMirror standard: Headers stop at next same-level header.
+            // Ignore headers inside code blocks? (Simple regex check)
+            const nextHeaderMatch = nextLineText.match(/^(#+)\s/);
+            if (nextHeaderMatch) {
+                const nextLevel = nextHeaderMatch[1].length;
+                if (nextLevel <= headerLevel) {
+                    endLineNo = i - 1;
+                    break;
+                }
+            }
+        }
+
+        // If we found a valid end point (and it's not just the header itself)
+        if (endLineNo > line.number) {
+            return { from: line.to, to: doc.line(endLineNo).to };
+        }
+    }
+
     return null;
 });
 
