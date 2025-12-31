@@ -1,5 +1,10 @@
-/* [PRD 3.2.2] Toggle Indentation Classes */
-/* Spacer Removed */
+/* [PRD 3.2.3] Toggle Background Highlight */
+.toggle-bg {
+    background-color: var(--background-secondary);
+    border-radius: 4px;
+    /* Optional: Add some padding to the text if needed, but line decoration handles bg */
+    /* padding-left: 4px; */
+}
 
 /* [PRD 3.2.2] Notion-like Triangle Style */
 .toggle-widget {

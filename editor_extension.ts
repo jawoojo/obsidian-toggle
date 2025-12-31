@@ -201,6 +201,28 @@ const togglePlugin = ViewPlugin.fromClass(
 
         update(update: ViewUpdate) {
             let shouldUpdate = update.docChanged || update.viewportChanged || update.transactions.some(tr => tr.effects.some((e: StateEffect<any>) => e.is(foldEffect) || e.is(unfoldEffect)));
+
+            // [Restored] Only update on selection change if we are interacting with an END_TAG
+            if (!shouldUpdate && update.selectionSet) {
+                const hasOverlap = (state: EditorState) => {
+                    for (const range of state.selection.ranges) {
+                        const line = state.doc.lineAt(range.head);
+                        if (line.text.startsWith(END_TAG)) {
+                            // Check intersection with tag
+                            if (range.from <= line.from + END_TAG.length && range.to >= line.from) return true;
+                        }
+                    }
+                    return false;
+                };
+
+                const prevOverlap = hasOverlap(update.startState);
+                const currOverlap = hasOverlap(update.state);
+
+                if (prevOverlap || currOverlap) {
+                    shouldUpdate = true;
+                }
+            }
+
             if (shouldUpdate) {
                 this.decorations = this.buildDecorations(update.view);
             }
@@ -219,11 +241,53 @@ const togglePlugin = ViewPlugin.fromClass(
             }
             const decos: DecoSpec[] = [];
 
+            // --- A. Indentation Logic (O(N)) ---
+            const openStack: number[] = [];
+            const validRanges: { start: number, end: number }[] = [];
+
             for (let i = 1; i <= lineCount; i++) {
+                const lineText = doc.line(i).text;
+                if (lineText.startsWith(START_TAG)) {
+                    openStack.push(i);
+                } else if (lineText.startsWith(END_TAG)) {
+                    if (openStack.length > 0) {
+                        const start = openStack.pop()!;
+                        validRanges.push({ start, end: i });
+                    }
+                }
+            }
+
+            const diff = new Int32Array(lineCount + 2);
+            for (const range of validRanges) {
+                // Background covers from Start Line to End Line (Inclusive)
+                // "Callout Style" usually includes the header too.
+                // Let's include the header line for the background so it looks like a box.
+                if (range.end >= range.start) {
+                    diff[range.start]++;     // Start coloring at Header
+                    diff[range.end + 1]--;   // Stop coloring AFTER End Tag
+                }
+            }
+
+            // --- B. Build Decorations ---
+            let currentLevel = 0;
+
+            for (let i = 1; i <= lineCount; i++) {
+                currentLevel += diff[i];
                 const line = doc.line(i);
                 const text = line.text;
 
-                // 1. Start Widget ("|> " -> Triangle)
+                // 1. Background Highlight (Notion Callout Style)
+                if (currentLevel > 0) {
+                    decos.push({
+                        from: line.from,
+                        to: line.from,
+                        deco: Decoration.line({
+                            class: "toggle-bg"
+                        })
+                    });
+                }
+
+                // 2. Start Widget ("|> " -> Triangle)
                 if (text.startsWith(START_TAG)) {
                     const endLineNo = findMatchingEndLine(doc, i);
                     if (endLineNo !== -1) {
@@ -251,15 +315,26 @@ const togglePlugin = ViewPlugin.fromClass(
                     const rangeFrom = line.from;
                     const rangeTo = line.from + END_TAG.length;
 
-                    // Simple replacement, no indent logic
-                    decos.push({
-                        from: rangeFrom,
-                        to: rangeTo,
-                        deco: Decoration.replace({
-                            widget: new EndTagWidget(rangeFrom, 0), // 0 indent
-                            inclusive: true
-                        })
-                    });
+                    // [Restored] Reveal on Click/Selection
+                    let isSelected = false;
+                    for (const r of selection.ranges) {
+                        if (r.to >= rangeFrom && r.from <= rangeTo) {
+                            isSelected = true;
+                            break;
+                        }
+                    }
+
+                    // Only replace if NOT selected
+                    if (!isSelected) {
+                        decos.push({
+                            from: rangeFrom,
+                            to: rangeTo,
+                            deco: Decoration.replace({
+                                widget: new EndTagWidget(rangeFrom, 0), // 0 indent
+                                inclusive: true
+                            })
+                        });
+                    }
                 }
             }
 
