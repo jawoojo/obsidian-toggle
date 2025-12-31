@@ -1,4 +1,17 @@
-node_modules
+# Dependencies
+node_modules/
+package-lock.json
+# (If you prefer to track lockfiles, remove the line above)
+
+# Build outputs
 main.js
-styles.css
+# styles.css is a source file, so we keep it. If you build css from sass, ignore it.
+# styles.css
+
+# System
 .DS_Store
+.idea/
+.vscode/
+
+# Obsidian specific (if running inside a vault)
+.obsidian/

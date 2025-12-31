@@ -1,13 +1,13 @@
-import { App, Plugin, PluginSettingTab, Setting } from 'obsidian';
-import { toggleRangeField, foldStateField, toggleViewPlugin } from './togglePlugin';
+import { Plugin } from "obsidian";
+import { toggleExtension } from "./editor_extension";
 
-export default class NotionTogglePlugin extends Plugin {
+export default class TogglePlugin extends Plugin {
     async onload() {
-        console.log('Loading Notion Style Toggle Plugin');
-        this.registerEditorExtension([toggleRangeField, foldStateField, toggleViewPlugin]);
+        console.log("Loading Toggle Plugin V3 (Native Folding)");
+        this.registerEditorExtension(toggleExtension);
     }
 
     onunload() {
-        console.log('Unloading Notion Style Toggle Plugin');
+        console.log("Unloading Toggle Plugin");
     }
 }

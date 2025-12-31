@@ -1,0 +1,14 @@
+/* [PRD 3.2.2] Notion-like Triangle Style */
+.toggle-widget {
+    display: inline-block;
+    color: var(--text-normal);
+    /* Adapt to theme */
+    font-size: 0.8em;
+    /* Slightly smaller like Notion */
+    transition: transform 0.2s ease;
+    vertical-align: middle;
+}
+
+.toggle-widget:hover {
+    color: var(--text-accent);
+}
