@@ -2,27 +2,67 @@ import {
     EditorView,
     Decoration,
     DecorationSet,
+    WidgetType,
     ViewPlugin,
-    ViewUpdate
+    ViewUpdate,
+    keymap
 } from "@codemirror/view";
 import {
     RangeSetBuilder,
     Extension,
     EditorState,
     Text,
-    StateEffect
+    StateEffect,
+    Prec
 } from "@codemirror/state";
 import {
     foldService,
     foldEffect,
-    unfoldEffect
+    unfoldEffect,
+    foldedRanges
 } from "@codemirror/language";
 
 // Constants
 const START_TAG = "|> ";
 const END_TAG = "<|";
 
-// Helper: Stack Counting for Nested Toggles (Still used for FoldService logic as it needs specific pairs)
+// [PRD 3.1.1] Widget for Toggle (Triangle)
+class ToggleWidget extends WidgetType {
+    constructor(readonly isFolded: boolean, readonly foldStart: number, readonly foldEnd: number) {
+        super();
+    }
+
+    toDOM(view: EditorView): HTMLElement {
+        const span = document.createElement("span");
+        span.className = "toggle-widget";
+        span.textContent = this.isFolded ? "▶" : "▼"; // User requested: Triangle
+        span.style.cursor = "pointer";
+        span.style.paddingRight = "5px";
+        span.style.userSelect = "none";
+
+        span.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (this.isFolded) {
+                view.dispatch({
+                    effects: unfoldEffect.of({ from: this.foldStart, to: this.foldEnd })
+                });
+            } else {
+                view.dispatch({
+                    effects: foldEffect.of({ from: this.foldStart, to: this.foldEnd })
+                });
+            }
+        };
+        return span;
+    }
+
+    ignoreEvent(): boolean {
+        return true;
+    }
+}
+
+// Helper: Stack Counting
 function findMatchingEndLine(doc: Text, startLineNo: number): number {
     let stack = 1;
     for (let i = startLineNo + 1; i <= doc.lines; i++) {
@@ -52,8 +92,8 @@ const notionFoldService = foldService.of((state: EditorState, lineStart: number,
     return null;
 });
 
-// 2. ViewPlugin for Visual Indentation (Optimized O(N))
-const indentPlugin = ViewPlugin.fromClass(
+// 2. ViewPlugin (Indentation + Widgets)
+const togglePlugin = ViewPlugin.fromClass(
     class {
         decorations: DecorationSet;
 
@@ -62,18 +102,26 @@ const indentPlugin = ViewPlugin.fromClass(
         }
 
         update(update: ViewUpdate) {
+            // Rebuild if doc OR fold state changes
             if (update.docChanged || update.viewportChanged || update.transactions.some(tr => tr.effects.some((e: StateEffect<any>) => e.is(foldEffect) || e.is(unfoldEffect)))) {
                 this.decorations = this.buildDecorations(update.view);
             }
         }
 
         buildDecorations(view: EditorView): DecorationSet {
-            const builder = new RangeSetBuilder<Decoration>();
             const doc = view.state.doc;
             const lineCount = doc.lines;
+            const ranges = foldedRanges(view.state);
 
-            // --- Algorithm: O(N) Valid Range Detection ---
-            // 1. Identify Valid Ranges using a Stack
+            // Container for all decorations to be sorted
+            interface DecoSpec {
+                from: number;
+                to: number;
+                deco: Decoration;
+            }
+            const decos: DecoSpec[] = [];
+
+            // --- A. Indentation Logic (O(N)) ---
             const openStack: number[] = [];
             const validRanges: { start: number, end: number }[] = [];
 
@@ -89,41 +137,67 @@ const indentPlugin = ViewPlugin.fromClass(
                 }
             }
 
-            // 2. Difference Array for Levels (Prefix Sum)
-            // diff[i] means "change in indentation level" at line i
-            // We need size = lineCount + 2 to safely handle index+1 boundaries
             const diff = new Int32Array(lineCount + 2);
-
             for (const range of validRanges) {
-                // We want to indent lines BETWEEN start and end.
-                // Range: [start+1, end-1] inclusive.
-                // Logic:
-                // At line (start+1), level increases by +1.
-                // At line (end), level decreases by -1 (fixing it back to 0 for the end tag itself).
-
                 if (range.end > range.start + 1) {
                     diff[range.start + 1]++;
                     diff[range.end]--;
                 }
             }
 
-            // 3. Apply Decorations by running Prefix Sum
+            // --- B. Build Decorations (Indent + Widget) ---
             let currentLevel = 0;
 
             for (let i = 1; i <= lineCount; i++) {
                 currentLevel += diff[i];
+                const line = doc.line(i);
 
+                // 1. Indentation
                 if (currentLevel > 0) {
-                    const line = doc.line(i);
                     const safeLevel = Math.min(currentLevel, 10);
-                    builder.add(
-                        line.from,
-                        line.from,
-                        Decoration.line({
+                    decos.push({
+                        from: line.from,
+                        to: line.from,
+                        deco: Decoration.line({
                             attributes: { class: `toggle-indent-${safeLevel}` }
                         })
-                    );
+                    });
                 }
+
+                // 2. Widget Replacement for "|> "
+                if (line.text.startsWith(START_TAG)) {
+                    const endLineNo = findMatchingEndLine(doc, i);
+                    if (endLineNo !== -1) {
+                        const foldStart = line.to;
+                        const foldEnd = doc.line(endLineNo).to;
+
+                        // Check folded state
+                        let isFolded = false;
+                        ranges.between(foldStart, foldEnd, (from, to) => {
+                            if (from === foldStart && to === foldEnd) isFolded = true;
+                        });
+
+                        decos.push({
+                            from: line.from,
+                            to: line.from + START_TAG.length,
+                            deco: Decoration.replace({
+                                widget: new ToggleWidget(isFolded, foldStart, foldEnd),
+                                inclusive: true
+                            })
+                        });
+                    }
+                }
+            }
+
+            // Sort decorations to satisfy RangeSetBuilder
+            decos.sort((a, b) => {
+                if (a.from !== b.from) return a.from - b.from;
+                return a.to - b.to;
+            });
+
+            const builder = new RangeSetBuilder<Decoration>();
+            for (const d of decos) {
+                builder.add(d.from, d.to, d.deco);
             }
 
             return builder.finish();
@@ -134,7 +208,49 @@ const indentPlugin = ViewPlugin.fromClass(
     }
 );
 
+// 3. Auto-Close Keymap
+// triggered when user types ">"
+const autoCloseKeymap = KeymapListener();
+
+function KeymapListener(): Extension {
+    return Prec.highest(keymap.of([{
+        key: ">",
+        run: (view: EditorView) => {
+            const state = view.state;
+            const ranges = state.selection.ranges;
+            // Only handle single cursor for simplicity
+            if (ranges.length !== 1) return false;
+
+            const range = ranges[0];
+            if (!range.empty) return false; // Don't handle selections
+
+            const pos = range.head;
+            // Check if previous char is "|"
+            const prevChar = state.doc.sliceString(pos - 1, pos);
+
+            if (prevChar === "|") {
+                // Check if it is at the START of the line (or just |> pattern?)
+                // User said "|> 치면". Assuming start of block.
+                const line = state.doc.lineAt(pos);
+                // Check if we are forming "|>" at start of line
+                // line.text up to pos-1 should be empty?? or just check pattern?
+                // Let's being robust: Just check if we are typing ">" after "|"
+
+                // Insert ">" then newline then "<|"
+                const insertText = ">\n<|";
+                view.dispatch({
+                    changes: { from: pos, insert: insertText },
+                    selection: { anchor: pos + 1 } // Cursor after ">" (before newline)
+                });
+                return true; // Handled
+            }
+            return false;
+        }
+    }]));
+}
+
 export const toggleExtension: Extension = [
     notionFoldService,
-    indentPlugin
+    togglePlugin,
+    autoCloseKeymap
 ];

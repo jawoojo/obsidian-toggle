@@ -1,44 +1,44 @@
 /* [PRD 3.2.2] Toggle Indentation Classes */
-/* Step size: 12px (User Requested) */
+/* Step size: 24px (User Requested) */
 
 .toggle-indent-1 {
-    padding-left: 12px !important;
-}
-
-.toggle-indent-2 {
     padding-left: 24px !important;
 }
 
-.toggle-indent-3 {
-    padding-left: 36px !important;
-}
-
-.toggle-indent-4 {
+.toggle-indent-2 {
     padding-left: 48px !important;
 }
 
-.toggle-indent-5 {
-    padding-left: 60px !important;
-}
-
-.toggle-indent-6 {
+.toggle-indent-3 {
     padding-left: 72px !important;
 }
 
-.toggle-indent-7 {
-    padding-left: 84px !important;
-}
-
-.toggle-indent-8 {
+.toggle-indent-4 {
     padding-left: 96px !important;
 }
 
+.toggle-indent-5 {
+    padding-left: 120px !important;
+}
+
+.toggle-indent-6 {
+    padding-left: 144px !important;
+}
+
+.toggle-indent-7 {
+    padding-left: 168px !important;
+}
+
+.toggle-indent-8 {
+    padding-left: 192px !important;
+}
+
 .toggle-indent-9 {
-    padding-left: 108px !important;
+    padding-left: 216px !important;
 }
 
 .toggle-indent-10 {
-    padding-left: 120px !important;
+    padding-left: 240px !important;
 }
 
 /* Ensure proper box model for indentation */
