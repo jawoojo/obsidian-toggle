@@ -23,24 +23,14 @@
 
 /* [NEW] End Tag Line Style (<|) */
 .toggle-end-widget {
-    /* [Fix 1] Use inline-block so it allows padding/margin */
+    /* [Changed] Invisible End Tag */
     display: inline-block;
-
-    /* Take up remaining width (flexible) */
-    width: 90%;
-
-    height: 2px;
-    background-color: var(--text-normal);
-
-    /* [Fix 2] Vertical Alignment */
-    /* Removed large margins. Perfectly centered vertically */
-    margin-top: 0;
-    margin-bottom: 0;
+    width: 0px;
+    height: 1em;
+    /* Keep height to preserve line height if needed, though usually line has height via text */
     vertical-align: middle;
-    /* transform: translateY(0.2em); Optional tweak if needed */
-
-    opacity: 0.8;
-    border-radius: 2px;
+    visibility: hidden;
+    /* Invisible */
 }
 
 .toggle-end-widget:hover {

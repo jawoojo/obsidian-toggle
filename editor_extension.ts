@@ -59,23 +59,24 @@ class ToggleWidget extends WidgetType {
     ignoreEvent(): boolean { return true; }
 }
 
-// [New] End Widget (Horizontal Line)
+// [Updated] End Widget (Horizontal Line or Error)
 class EndTagWidget extends WidgetType {
-    constructor(readonly pos: number, readonly indentPx: number) {
+    constructor(readonly pos: number, readonly indentPx: number, readonly isError: boolean = false) {
         super();
     }
 
     toDOM(view: EditorView): HTMLElement {
-        // [Fix] Use 'span' for inline flow
         const span = document.createElement("span");
-        span.className = "toggle-end-widget";
 
-        // [Fix] Apply Indentation directly to the widget
-        if (this.indentPx > 0) {
-            span.style.marginLeft = `${this.indentPx}px`;
+        if (this.isError) {
+            span.className = "toggle-end-error";
+            span.textContent = "<| (Unmatched)";
+        } else {
+            span.className = "toggle-end-widget";
+            // Normal: Invisible (handled by CSS)
         }
 
-        // Allow clicking the line to set cursor
+        // Allow clicking to set cursor
         span.onclick = (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -202,13 +203,18 @@ const togglePlugin = ViewPlugin.fromClass(
         update(update: ViewUpdate) {
             let shouldUpdate = update.docChanged || update.viewportChanged || update.transactions.some(tr => tr.effects.some((e: StateEffect<any>) => e.is(foldEffect) || e.is(unfoldEffect)));
 
-            // [Restored] Only update on selection change if we are interacting with an END_TAG
+            // [Enhanced] Update on selection change if we are interacting with ANY TAG
             if (!shouldUpdate && update.selectionSet) {
                 const hasOverlap = (state: EditorState) => {
                     for (const range of state.selection.ranges) {
                         const line = state.doc.lineAt(range.head);
-                        if (line.text.startsWith(END_TAG)) {
-                            // Check intersection with tag
+                        const text = line.text;
+                        // Check Start Tag
+                        if (text.startsWith(START_TAG)) {
+                            if (range.from <= line.from + START_TAG.length && range.to >= line.from) return true;
+                        }
+                        // Check End Tag
+                        else if (text.startsWith(END_TAG)) {
                             if (range.from <= line.from + END_TAG.length && range.to >= line.from) return true;
                         }
                     }
@@ -259,24 +265,23 @@ const togglePlugin = ViewPlugin.fromClass(
 
             const diff = new Int32Array(lineCount + 2);
             for (const range of validRanges) {
-                // Background covers from Start Line to End Line (Inclusive)
-                // "Callout Style" usually includes the header too.
-                // Let's include the header line for the background so it looks like a box.
                 if (range.end >= range.start) {
-                    diff[range.start]++;     // Start coloring at Header
-                    diff[range.end + 1]--;   // Stop coloring AFTER End Tag
+                    diff[range.start]++;
+                    diff[range.end + 1]--;
                 }
             }
 
             // --- B. Build Decorations ---
             let currentLevel = 0;
+            // [New] Orphan Detection Stack
+            let runningStack = 0;
 
             for (let i = 1; i <= lineCount; i++) {
                 currentLevel += diff[i];
                 const line = doc.line(i);
                 const text = line.text;
 
-                // 1. Background Highlight (Notion Callout Style)
+                // 1. Background Highlight
                 if (currentLevel > 0) {
                     decos.push({
                         from: line.from,
@@ -289,33 +294,11 @@ const togglePlugin = ViewPlugin.fromClass(
 
                 // 2. Start Widget ("|> " -> Triangle)
                 if (text.startsWith(START_TAG)) {
-                    const endLineNo = findMatchingEndLine(doc, i);
-                    if (endLineNo !== -1) {
-                        const foldStart = line.to;
-                        const foldEnd = doc.line(endLineNo).to;
-
-                        let isFolded = false;
-                        ranges.between(foldStart, foldEnd, (from, to) => {
-                            if (from === foldStart && to === foldEnd) isFolded = true;
-                        });
-
-                        decos.push({
-                            from: line.from,
-                            to: line.from + START_TAG.length,
-                            deco: Decoration.replace({
-                                widget: new ToggleWidget(isFolded, foldStart, foldEnd),
-                                inclusive: true
-                            })
-                        });
-                    }
-                }
-
-                // 2. End Widget ("<|" -> Horizontal Line)
-                if (text.startsWith(END_TAG)) {
+                    runningStack++; // Push to stack
+                    // Check Reveal
                     const rangeFrom = line.from;
-                    const rangeTo = line.from + END_TAG.length;
+                    const rangeTo = line.from + START_TAG.length;
 
-                    // [Restored] Reveal on Click/Selection
                     let isSelected = false;
                     for (const r of selection.ranges) {
                         if (r.to >= rangeFrom && r.from <= rangeTo) {
@@ -326,11 +309,57 @@ const togglePlugin = ViewPlugin.fromClass(
 
                     // Only replace if NOT selected
                     if (!isSelected) {
+                        const endLineNo = findMatchingEndLine(doc, i);
+                        if (endLineNo !== -1) {
+                            const foldStart = line.to;
+                            const foldEnd = doc.line(endLineNo).to;
+
+                            let isFolded = false;
+                            ranges.between(foldStart, foldEnd, (from, to) => {
+                                if (from === foldStart && to === foldEnd) isFolded = true;
+                            });
+
+                            decos.push({
+                                from: rangeFrom,
+                                to: rangeTo,
+                                deco: Decoration.replace({
+                                    widget: new ToggleWidget(isFolded, foldStart, foldEnd),
+                                    inclusive: true
+                                })
+                            });
+                        }
+                    }
+                }
+
+                // 3. End Widget ("<|" -> Smart Visibility)
+                if (text.startsWith(END_TAG)) {
+                    const rangeFrom = line.from;
+                    const rangeTo = line.from + END_TAG.length;
+
+                    // Orphan Check
+                    const isOrphan = (runningStack === 0);
+                    if (!isOrphan) {
+                        runningStack--;
+                    }
+
+                    // Reveal on Click/Selection
+                    let isSelected = false;
+                    for (const r of selection.ranges) {
+                        if (r.to >= rangeFrom && r.from <= rangeTo) {
+                            isSelected = true;
+                            break;
+                        }
+                    }
+
+                    // Simple Logic: 
+                    // If Selected OR Orphan -> SHOW RAW TEXT (No Decoration)
+                    // If Matched & Not Selected -> HIDE (Invisible Decoration)
+                    if (!isSelected && !isOrphan) {
                         decos.push({
                             from: rangeFrom,
                             to: rangeTo,
                             deco: Decoration.replace({
-                                widget: new EndTagWidget(rangeFrom, 0), // 0 indent
+                                widget: new EndTagWidget(rangeFrom, 0),
                                 inclusive: true
                             })
                         });
@@ -366,7 +395,7 @@ const autoCloseKeymap = Prec.highest(keymap.of([{
         const prevChars = state.doc.sliceString(pos - 2, pos);
 
         if (prevChars === "|>") {
-            const insertText = " \n<|";
+            const insertText = " \n\n<|";
             view.dispatch({
                 changes: { from: pos, insert: insertText },
                 selection: { anchor: pos + 1 }
