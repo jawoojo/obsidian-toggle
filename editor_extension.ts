@@ -2,7 +2,6 @@ import {
     EditorView,
     Decoration,
     DecorationSet,
-    WidgetType,
     ViewPlugin,
     ViewUpdate
 } from "@codemirror/view";
@@ -16,48 +15,14 @@ import {
 import {
     foldService,
     foldEffect,
-    unfoldEffect,
-    foldedRanges
+    unfoldEffect
 } from "@codemirror/language";
 
 // Constants
 const START_TAG = "|> ";
 const END_TAG = "<|";
 
-// [PRD 3.1.1] Widget
-class ToggleWidget extends WidgetType {
-    constructor(readonly isFolded: boolean, readonly foldStart: number, readonly foldEnd: number) {
-        super();
-    }
-
-    toDOM(view: EditorView): HTMLElement {
-        const span = document.createElement("span");
-        span.className = "toggle-widget";
-        span.textContent = this.isFolded ? "▶" : "▼";
-
-        span.onclick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-
-            if (this.isFolded) {
-                view.dispatch({
-                    effects: unfoldEffect.of({ from: this.foldStart, to: this.foldEnd })
-                });
-            } else {
-                view.dispatch({
-                    effects: foldEffect.of({ from: this.foldStart, to: this.foldEnd })
-                });
-            }
-        };
-        return span;
-    }
-
-    ignoreEvent(): boolean {
-        return true;
-    }
-}
-
-// Helper: Stack Counting for Nested Toggles
+// Helper: Stack Counting for Nested Toggles (Still used for FoldService logic as it needs specific pairs)
 function findMatchingEndLine(doc: Text, startLineNo: number): number {
     let stack = 1;
     for (let i = startLineNo + 1; i <= doc.lines; i++) {
@@ -74,22 +39,21 @@ function findMatchingEndLine(doc: Text, startLineNo: number): number {
     return -1;
 }
 
-// 1. Fold Service (Defines what can be folded)
+// 1. Fold Service
 const notionFoldService = foldService.of((state: EditorState, lineStart: number, lineEnd: number) => {
     const line = state.doc.lineAt(lineStart);
     if (line.text.startsWith(START_TAG)) {
         const endLineNo = findMatchingEndLine(state.doc, line.number);
         if (endLineNo !== -1) {
             const nextLine = state.doc.line(endLineNo);
-            // Returns the range that Obsidian will see as "foldable"
             return { from: line.to, to: nextLine.to };
         }
     }
     return null;
 });
 
-// 2. ViewPlugin (Renders the widget replacing '|> ')
-const toggleWidgetPlugin = ViewPlugin.fromClass(
+// 2. ViewPlugin for Visual Indentation (Optimized O(N))
+const indentPlugin = ViewPlugin.fromClass(
     class {
         decorations: DecorationSet;
 
@@ -98,7 +62,6 @@ const toggleWidgetPlugin = ViewPlugin.fromClass(
         }
 
         update(update: ViewUpdate) {
-            // Rebuild if doc changes or FOLD state changes
             if (update.docChanged || update.viewportChanged || update.transactions.some(tr => tr.effects.some((e: StateEffect<any>) => e.is(foldEffect) || e.is(unfoldEffect)))) {
                 this.decorations = this.buildDecorations(update.view);
             }
@@ -107,44 +70,71 @@ const toggleWidgetPlugin = ViewPlugin.fromClass(
         buildDecorations(view: EditorView): DecorationSet {
             const builder = new RangeSetBuilder<Decoration>();
             const doc = view.state.doc;
-            const ranges = foldedRanges(view.state);
+            const lineCount = doc.lines;
 
-            for (let i = 1; i <= doc.lines; i++) {
-                const line = doc.line(i);
+            // --- Algorithm: O(N) Valid Range Detection ---
+            // 1. Identify Valid Ranges using a Stack
+            const openStack: number[] = [];
+            const validRanges: { start: number, end: number }[] = [];
 
-                if (line.text.startsWith(START_TAG)) {
-                    const endLineNo = findMatchingEndLine(doc, i);
-
-                    if (endLineNo !== -1) {
-                        const foldStart = line.to;
-                        const foldEnd = doc.line(endLineNo).to;
-
-                        // Check if currently folded
-                        let isFolded = false;
-                        ranges.between(foldStart, foldEnd, (from: number, to: number) => {
-                            if (from === foldStart && to === foldEnd) {
-                                isFolded = true;
-                            }
-                        });
-
-                        // Add the replacement widget safely
-                        builder.add(
-                            line.from,
-                            line.from + START_TAG.length,
-                            Decoration.replace({
-                                widget: new ToggleWidget(isFolded, foldStart, foldEnd),
-                                inclusive: true
-                            })
-                        );
+            for (let i = 1; i <= lineCount; i++) {
+                const lineText = doc.line(i).text;
+                if (lineText.startsWith(START_TAG)) {
+                    openStack.push(i);
+                } else if (lineText.startsWith(END_TAG)) {
+                    if (openStack.length > 0) {
+                        const start = openStack.pop()!;
+                        validRanges.push({ start, end: i });
                     }
                 }
             }
+
+            // 2. Difference Array for Levels (Prefix Sum)
+            // diff[i] means "change in indentation level" at line i
+            // We need size = lineCount + 2 to safely handle index+1 boundaries
+            const diff = new Int32Array(lineCount + 2);
+
+            for (const range of validRanges) {
+                // We want to indent lines BETWEEN start and end.
+                // Range: [start+1, end-1] inclusive.
+                // Logic:
+                // At line (start+1), level increases by +1.
+                // At line (end), level decreases by -1 (fixing it back to 0 for the end tag itself).
+
+                if (range.end > range.start + 1) {
+                    diff[range.start + 1]++;
+                    diff[range.end]--;
+                }
+            }
+
+            // 3. Apply Decorations by running Prefix Sum
+            let currentLevel = 0;
+
+            for (let i = 1; i <= lineCount; i++) {
+                currentLevel += diff[i];
+
+                if (currentLevel > 0) {
+                    const line = doc.line(i);
+                    const safeLevel = Math.min(currentLevel, 10);
+                    builder.add(
+                        line.from,
+                        line.from,
+                        Decoration.line({
+                            attributes: { class: `toggle-indent-${safeLevel}` }
+                        })
+                    );
+                }
+            }
+
             return builder.finish();
         }
+    },
+    {
+        decorations: v => v.decorations
     }
 );
 
 export const toggleExtension: Extension = [
     notionFoldService,
-    toggleWidgetPlugin
+    indentPlugin
 ];
