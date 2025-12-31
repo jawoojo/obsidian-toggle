@@ -279,26 +279,24 @@ const togglePlugin = ViewPlugin.fromClass(
 
             for (let i = 1; i <= lineCount; i++) {
                 currentLevel += diff[i];
-                // [New] Peek next level
-                const nextLevel = currentLevel + (i + 1 < diff.length ? diff[i + 1] : 0);
-
                 const line = doc.line(i);
                 const text = line.text;
+                const trimmedText = text.trim();
 
                 // 1. Background Highlight (Notion Callout Style)
                 if (currentLevel > 0) {
-                    // Cap level at 5 for styling
                     const safeLevel = Math.min(currentLevel, 5);
                     let classNames = `toggle-bg toggle-bg-level-${safeLevel}`;
 
-                    // [New] Continuous Background Logic
-                    // If matched previous line -> No Top Radius
-                    if (currentLevel === prevLevel) {
-                        classNames += " toggle-bg-no-top";
+                    // [New] Tag-Based Rounding Logic
+                    // If this line explicitly STARTS a toggle -> Round Top
+                    if (trimmedText.startsWith(START_TAG)) {
+                        classNames += " toggle-round-top";
                     }
-                    // If matches next line -> No Bottom Radius
-                    if (currentLevel === nextLevel) {
-                        classNames += " toggle-bg-no-bot";
+
+                    // If this line explicitly ENDS a toggle -> Round Bottom
+                    if (trimmedText.startsWith(END_TAG)) {
+                        classNames += " toggle-round-bot";
                     }
 
                     decos.push({

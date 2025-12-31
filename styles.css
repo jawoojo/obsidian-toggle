@@ -1,20 +1,26 @@
 /* [PRD 3.2.3] Toggle Background Highlight */
-/* [PRD 3.2.3] Toggle Background Highlight */
 .toggle-bg {
-    border-radius: 4px;
+    border-radius: 0;
+    /* Default: Flat (Content lines) */
     /* Base style, color is handled by level classes below */
 }
 
-/* [NEW] Continuous Block Helpers */
-.toggle-bg-no-top {
-    border-top-left-radius: 0 !important;
-    border-top-right-radius: 0 !important;
+/* [Optimized] Tag-Based Rounding Logic */
+/* Determined by JS explicitly checking for |> and <| */
+
+/* Start Tag Line -> Round Top */
+.toggle-round-top {
+    border-top-left-radius: 4px !important;
+    border-top-right-radius: 4px !important;
 }
 
-.toggle-bg-no-bot {
-    border-bottom-left-radius: 0 !important;
-    border-bottom-right-radius: 0 !important;
+/* End Tag Line -> Round Bottom */
+.toggle-round-bot {
+    border-bottom-left-radius: 4px !important;
+    border-bottom-right-radius: 4px !important;
 }
+
+/* Cleanup: Complex sibling selectors removed */
 
 /* Nested Levels - Light Mode (Darken 5% per level) */
 .theme-light .toggle-bg-level-1 {
