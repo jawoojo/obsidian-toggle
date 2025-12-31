@@ -43,7 +43,20 @@
     background-color: rgba(0, 0, 0, 0.25);
 }
 
-/* Nested Levels - Dark Mode (Lighten 5% per level) */
+/* Reversing Opacity from Level 6 */
+.theme-light .toggle-bg-level-6 {
+    background-color: rgba(0, 0, 0, 0.20);
+}
+
+.theme-light .toggle-bg-level-7 {
+    background-color: rgba(0, 0, 0, 0.15);
+}
+
+.theme-light .toggle-bg-level-8 {
+    background-color: rgba(0, 0, 0, 0.10);
+}
+
+/* Nested Levels - Dark Mode (Lighten 5% per level, then reverse) */
 .theme-dark .toggle-bg-level-1 {
     background-color: rgba(255, 255, 255, 0.05);
 }
@@ -62,6 +75,19 @@
 
 .theme-dark .toggle-bg-level-5 {
     background-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Reversing Opacity */
+.theme-dark .toggle-bg-level-6 {
+    background-color: rgba(255, 255, 255, 0.20);
+}
+
+.theme-dark .toggle-bg-level-7 {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.theme-dark .toggle-bg-level-8 {
+    background-color: rgba(255, 255, 255, 0.10);
 }
 
 /* [PRD 3.2.2] Notion-like Triangle Style */

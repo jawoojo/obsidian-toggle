@@ -285,7 +285,7 @@ const togglePlugin = ViewPlugin.fromClass(
 
                 // 1. Background Highlight (Notion Callout Style)
                 if (currentLevel > 0) {
-                    const safeLevel = Math.min(currentLevel, 5);
+                    const safeLevel = Math.min(currentLevel, 8); // [Updated] Cap at 8
                     let classNames = `toggle-bg toggle-bg-level-${safeLevel}`;
 
                     // [New] Tag-Based Rounding Logic
