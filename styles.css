@@ -5,7 +5,12 @@
     height: 1em;
     vertical-align: top;
     pointer-events: none;
-    margin-right: 4px;
+    /* [Fix] Remove margin-right for exact alignment with padding */
+    margin-right: 0;
+
+    /* [DEBUG] Pink Brick */
+    background-color: rgba(255, 105, 180, 0.5);
+    z-index: 1000;
 }
 
 /* [PRD 3.2.2] Notion-like Triangle Style */

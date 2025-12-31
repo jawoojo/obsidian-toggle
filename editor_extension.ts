@@ -314,6 +314,26 @@ const togglePlugin = ViewPlugin.fromClass(
                 // 1. Indentation (using SpacerWidget)
                 // [Logic Change] For END_TAG lines, we handle indent inside the EndTagWidget itself.
                 // For all other lines, we use the SpacerWidget.
+                // 1. Indentation (Hybrid Method: Hanging Indent)
+                // [PRD 2.3] Wrapping Strategy:
+                // - padding-left: Indents the WHOLE block (Lines 2+ are consistent).
+                // - text-indent: Pulls the FIRST line back to 0.
+                // - SpacerWidget: Fills the gap on the first line physically.
+                if (currentLevel > 0) {
+                    decos.push({
+                        from: line.from,
+                        to: line.from,
+                        deco: Decoration.line({
+                            attributes: {
+                                // !important to override Obsidian defaults
+                                style: `padding-left: ${indentPx}px !important; text-indent: -${indentPx}px !important;`
+                            },
+                            class: "toggle-indent-line"
+                        })
+                    });
+                }
+
+                // [Spacer] Physical Brick for First Line Stability
                 if (currentLevel > 0 && !text.startsWith(END_TAG)) {
                     decos.push({
                         from: line.from,

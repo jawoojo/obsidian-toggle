@@ -28,11 +28,14 @@
     *   **스타일:** 가로선은 인라인 요소(span)로 렌더링되어 들여쓰기(Spacer)의 영향을 받아야 하며, 텍스트 라인의 중앙(vertical-align: middle)에 위치해야 한다.
 
 ### 2.3. 들여쓰기 및 정렬 (Indentation & Alignment)
-* **[2.3.1]** **Spacer Widget 전략:** Markdown 리스트(`-`, `1.`)와의 호환성을 위해, CSS Padding 대신 **"투명 Spacer Widget"**을 줄 처음에 삽입하여 콘텐츠를 물리적으로 밀어낸다.
+* **[2.3.1]** **Hybrid/Line Padding 전략 (Core Architecture):**
+    *   **문제 정의:** 단순 Spacer Widget(벽돌)은 *첫 줄*만 밀어내므로, 글자가 길어져 줄바꿈(Wrap)이 발생하면 두 번째 줄부터는 들여쓰기가 풀리는 심각한 가독성 문제가 발생함.
+    *   **해결책 (Line Decoration):** CodeMirror의 `Decoration.line`을 사용하여 **줄 전체 컨테이너(`cm-line`)에 `padding-left`를 부여**한다.
+    *   **효과:** "투명 벽돌"이 줄의 시작뿐만 아니라 **문단의 왼쪽 전체를 받치고 있는 형태**가 되어, 줄바꿈 시에도 완벽한 정렬을 유지한다.
 * **[2.3.2]** **정밀 들여쓰기 공식 (Pixel Perfect):**
     *   **Level 1:** `12.5px` (제목 텍스트 시작점과 일치)
     *   **Level 2 이상:** `12.5px + (Level - 1) * 16.5px` (규칙적 증분)
-    *   **목적:** 깊이가 깊어져도 제목(Title)과 내용(Content)의 시작 라인이 시각적으로 일직선을 이루어야 한다.
+    *   **구현:** 이 계산된 값을 Spacer의 너비가 아닌, **라인의 `padding-left` 값**으로 주입한다.
 
 ### 2.4. 스코프 및 접기 로직 (Scope & Folding)
 * **[2.4.1]** **제목 접기 제한 (Scoped Header Folding):**
