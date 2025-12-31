@@ -3,10 +3,9 @@
 .toggle-spacer {
     display: inline-block;
     height: 1em;
-    /* Match line height roughly */
     vertical-align: top;
-    /* Background transparent */
     pointer-events: none;
+    margin-right: 4px;
 }
 
 /* [PRD 3.2.2] Notion-like Triangle Style */
@@ -18,7 +17,6 @@
     vertical-align: middle;
     user-select: none;
     margin-right: 4px;
-    /* Space between triangle and text */
 }
 
 .toggle-widget:hover {
@@ -26,18 +24,28 @@
 }
 
 /* [NEW] End Tag Line Style (<|) */
-/* Thicker and Darker as requested */
 .toggle-end-widget {
-    display: block;
-    width: 100%;
+    /* [Fix 1] Use inline-block so it allows padding/margin */
+    display: inline-block;
+
+    /* Take up remaining width (flexible) */
+    width: 90%;
+
     height: 2px;
-    /* Thicker */
     background-color: var(--text-normal);
-    /* Darker (matches text) */
-    margin-top: 8px;
-    margin-bottom: 8px;
+
+    /* [Fix 2] Vertical Alignment */
+    /* Removed large margins. Perfectly centered vertically */
+    margin-top: 0;
+    margin-bottom: 0;
+    vertical-align: middle;
+    /* transform: translateY(0.2em); Optional tweak if needed */
+
     opacity: 0.8;
-    /* More visible */
     border-radius: 2px;
-    /* Soft edges */
+}
+
+.toggle-end-widget:hover {
+    background-color: var(--interactive-accent);
+    cursor: pointer;
 }

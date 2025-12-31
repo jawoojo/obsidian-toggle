@@ -61,16 +61,22 @@ class ToggleWidget extends WidgetType {
 
 // [New] End Widget (Horizontal Line)
 class EndTagWidget extends WidgetType {
-    constructor(readonly pos: number) {
+    constructor(readonly pos: number, readonly indentPx: number) {
         super();
     }
 
     toDOM(view: EditorView): HTMLElement {
-        const div = document.createElement("div");
-        div.className = "toggle-end-widget";
+        // [Fix] Use 'span' for inline flow
+        const span = document.createElement("span");
+        span.className = "toggle-end-widget";
+
+        // [Fix] Apply Indentation directly to the widget
+        if (this.indentPx > 0) {
+            span.style.marginLeft = `${this.indentPx}px`;
+        }
 
         // Allow clicking the line to set cursor
-        div.onclick = (e) => {
+        span.onclick = (e) => {
             e.preventDefault();
             e.stopPropagation();
             view.dispatch({
@@ -78,7 +84,7 @@ class EndTagWidget extends WidgetType {
             });
             view.focus();
         };
-        return div;
+        return span;
     }
 
     ignoreEvent(): boolean { return false; }
@@ -200,7 +206,28 @@ const togglePlugin = ViewPlugin.fromClass(
             for (const range of validRanges) {
                 if (range.end > range.start + 1) {
                     diff[range.start + 1]++;
-                    diff[range.end]--;
+
+                    // [Fix] User wants the End Tag line to also be indented.
+                    // Previously: diff[range.end]-- (End Tag drops back to Parent Level)
+                    // Now: diff[range.end + 1]-- (End Tag stays at Content Level, drops AFTER)
+                    // Wait, standard coding style: } aligns with { (Parent Level).
+                    // But user request: "The <| line starting position is not indented... insert bricks".
+                    // If user literally wants the line to start indented, I should include it.
+                    // BUT, if I indent it, it aligns with content, not the start tag.
+                    // Let's try aligning with Content as requested?
+                    // "Until the indentation ends" -> imply covering the whole block.
+                    // Actually, let's keep it simple: The END tag should align with the START tag usually.
+                    // But if user says "it's not indented", maybe they nest deeply and the <| is at root 0?
+                    // Ah, my logic `findMatchingEndLine` finds the matching tag.
+                    // The levels are cumulative.
+                    // Start Tag (L0) -> Content (L1) -> End Tag (L0).
+                    // If user wants End Tag to be L1? That's unusual but I will follow "Insert bricks" instruction.
+
+                    // Actually, if I change to diff[range.end + 1]--, the End Tag gets L1.
+                    // If I change to diff[range.end]--, the End Tag gets L0.
+
+                    // Let's assume User wants End Tag to align with CONTENT (L1).
+                    diff[range.end + 1]--;
                 }
             }
 
@@ -212,16 +239,18 @@ const togglePlugin = ViewPlugin.fromClass(
                 const line = doc.line(i);
                 const text = line.text;
 
+                const indentPx = currentLevel > 0 ? currentLevel * INDENT_STEP : 0;
+
                 // 1. Indentation (using SpacerWidget)
-                // We inject a widget at the very start of the line content.
-                if (currentLevel > 0) {
-                    const indentPx = currentLevel * INDENT_STEP;
+                // [Logic Change] For END_TAG lines, we handle indent inside the EndTagWidget itself.
+                // For all other lines, we use the SpacerWidget.
+                if (currentLevel > 0 && !text.startsWith(END_TAG)) {
                     decos.push({
                         from: line.from,
                         to: line.from,
                         deco: Decoration.widget({
                             widget: new SpacerWidget(indentPx),
-                            side: -1 // To appear before content
+                            side: -1
                         })
                     });
                 }
@@ -270,10 +299,24 @@ const togglePlugin = ViewPlugin.fromClass(
                             from: rangeFrom,
                             to: rangeTo,
                             deco: Decoration.replace({
-                                widget: new EndTagWidget(rangeFrom),
+                                // Pass indentPx here directly
+                                widget: new EndTagWidget(rangeFrom, indentPx),
                                 inclusive: true
                             })
                         });
+                    } else {
+                        // If selected (revealed), we MUST add the SpacerWidget manually 
+                        // because we skipped it in step 1.
+                        if (currentLevel > 0) {
+                            decos.push({
+                                from: line.from,
+                                to: line.from,
+                                deco: Decoration.widget({
+                                    widget: new SpacerWidget(indentPx),
+                                    side: -1
+                                })
+                            });
+                        }
                     }
                 }
             }
