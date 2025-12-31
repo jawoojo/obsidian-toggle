@@ -34,15 +34,10 @@ class ToggleWidget extends WidgetType {
         const span = document.createElement("span");
         span.className = "toggle-widget";
         span.textContent = this.isFolded ? "▶" : "▼";
-        span.style.cursor = "pointer";
-        span.style.paddingRight = "5px";
-        span.style.userSelect = "none";
 
         span.onclick = (e) => {
             e.preventDefault();
             e.stopPropagation();
-
-            console.log(`[Toggle] Click. Folded: ${this.isFolded}`);
 
             if (this.isFolded) {
                 view.dispatch({
@@ -79,20 +74,21 @@ function findMatchingEndLine(doc: Text, startLineNo: number): number {
     return -1;
 }
 
-// 1. Fold Service
+// 1. Fold Service (Defines what can be folded)
 const notionFoldService = foldService.of((state: EditorState, lineStart: number, lineEnd: number) => {
     const line = state.doc.lineAt(lineStart);
     if (line.text.startsWith(START_TAG)) {
         const endLineNo = findMatchingEndLine(state.doc, line.number);
         if (endLineNo !== -1) {
             const nextLine = state.doc.line(endLineNo);
+            // Returns the range that Obsidian will see as "foldable"
             return { from: line.to, to: nextLine.to };
         }
     }
     return null;
 });
 
-// 2. ViewPlugin with Sorting
+// 2. ViewPlugin (Renders the widget replacing '|> ')
 const toggleWidgetPlugin = ViewPlugin.fromClass(
     class {
         decorations: DecorationSet;
@@ -102,78 +98,28 @@ const toggleWidgetPlugin = ViewPlugin.fromClass(
         }
 
         update(update: ViewUpdate) {
+            // Rebuild if doc changes or FOLD state changes
             if (update.docChanged || update.viewportChanged || update.transactions.some(tr => tr.effects.some((e: StateEffect<any>) => e.is(foldEffect) || e.is(unfoldEffect)))) {
                 this.decorations = this.buildDecorations(update.view);
             }
         }
 
         buildDecorations(view: EditorView): DecorationSet {
+            const builder = new RangeSetBuilder<Decoration>();
             const doc = view.state.doc;
             const ranges = foldedRanges(view.state);
 
-            // Collect decorations in an array first
-            interface DecoSpec {
-                from: number;
-                to: number;
-                deco: Decoration;
-            }
-            const decos: DecoSpec[] = [];
-
-            const INDENT_PX = 20;
-
-            // Stack logic for indentation
-            // To do this efficiently via single pass, we can track "open Start Tags".
-            // But strict stack counting requires finding the matching end tag.
-            // Let's iterate lines and use a simpler indentation heuristic or the robust calculation?
-            // Robust calculation for every line is expensive (O(N^2)). (Calling findMatchingEndLine inside loop)
-            // But for now correctness > perf.
-
-            // Actually, Indentation level is just "Current Open Stacks".
-            // We can track a running stack count.
-
-            let stackLevel = 0;
-
             for (let i = 1; i <= doc.lines; i++) {
                 const line = doc.line(i);
-                const text = line.text;
 
-                // Adjust stack level
-                // Logic:
-                // If |> matches a valid block, it increases indent for SUBSEQUENT lines.
-                // If <| matches a valid block, it decreases indent for THIS line and subsequent?
-                // Usually:
-                // Header: Level 0
-                // Content: Level 1
-                // Footer: Level 0
-
-                let lineIndentLevel = stackLevel;
-
-                if (text.startsWith(START_TAG)) {
-                    stackLevel++;
-                } else if (text.startsWith(END_TAG)) {
-                    stackLevel--;
-                    if (stackLevel < 0) stackLevel = 0;
-                    lineIndentLevel = stackLevel;
-                }
-
-                // Add Indentation Decoration
-                if (lineIndentLevel > 0) {
-                    decos.push({
-                        from: line.from,
-                        to: line.from,
-                        deco: Decoration.line({
-                            attributes: { style: `padding-left: ${lineIndentLevel * INDENT_PX}px` }
-                        })
-                    });
-                }
-
-                // Add Widget Decoration for Headers
-                if (text.startsWith(START_TAG)) {
+                if (line.text.startsWith(START_TAG)) {
                     const endLineNo = findMatchingEndLine(doc, i);
+
                     if (endLineNo !== -1) {
                         const foldStart = line.to;
                         const foldEnd = doc.line(endLineNo).to;
 
+                        // Check if currently folded
                         let isFolded = false;
                         ranges.between(foldStart, foldEnd, (from: number, to: number) => {
                             if (from === foldStart && to === foldEnd) {
@@ -181,33 +127,17 @@ const toggleWidgetPlugin = ViewPlugin.fromClass(
                             }
                         });
 
-                        decos.push({
-                            from: line.from,
-                            to: line.from + START_TAG.length,
-                            deco: Decoration.replace({
+                        // Add the replacement widget safely
+                        builder.add(
+                            line.from,
+                            line.from + START_TAG.length,
+                            Decoration.replace({
                                 widget: new ToggleWidget(isFolded, foldStart, foldEnd),
                                 inclusive: true
                             })
-                        });
+                        );
                     }
                 }
-            }
-
-            // SORT DECORATIONS
-            // RangeSetBuilder requires strict sort.
-            decos.sort((a, b) => {
-                if (a.from !== b.from) return a.from - b.from;
-                // If same start position, order matters?
-                // Line decorations are usually attached to line start.
-                // Replace decorations are range.
-                // startSide default is 0.
-                // Let's rely on standard stability.
-                return a.to - b.to;
-            });
-
-            const builder = new RangeSetBuilder<Decoration>();
-            for (const d of decos) {
-                builder.add(d.from, d.to, d.deco);
             }
             return builder.finish();
         }
