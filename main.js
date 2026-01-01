@@ -258,6 +258,12 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
           let classNames = `toggle-bg toggle-bg-level-${safeLevel}`;
           if (trimmedText.startsWith(START_TAG)) {
             classNames += " toggle-round-top";
+            const contentAfter = trimmedText.slice(START_TAG.length);
+            const headerMatch = contentAfter.match(/^\s*(#{1,6})\s/);
+            if (headerMatch) {
+              const level = headerMatch[1].length;
+              classNames += ` cm-header cm-header-${level} HyperMD-header HyperMD-header-${level}`;
+            }
           }
           if (trimmedText.startsWith(END_TAG)) {
             classNames += " toggle-round-bot";

@@ -337,6 +337,19 @@ const togglePlugin = ViewPlugin.fromClass(
                     // If this line explicitly STARTS a toggle -> Round Top
                     if (trimmedText.startsWith(START_TAG)) {
                         classNames += " toggle-round-top";
+
+                        // [New Feature] Header Support (e.g. |> # Title)
+                        // Parse content after |> to find Headers
+                        const contentAfter = trimmedText.slice(START_TAG.length);
+                        // Regex: Start with optional space, then 1-6 hashes, then space (Strict Markdown Header)
+                        const headerMatch = contentAfter.match(/^\s*(#{1,6})\s/);
+
+                        if (headerMatch) {
+                            const level = headerMatch[1].length;
+                            // Inject Native Obsidian Header Classes
+                            // This allows inheritance of font-size, color, weight from current theme
+                            classNames += ` cm-header cm-header-${level} HyperMD-header HyperMD-header-${level}`;
+                        }
                     }
 
                     // If this line explicitly ENDS a toggle -> Round Bottom
