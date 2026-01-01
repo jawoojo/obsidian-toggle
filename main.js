@@ -34,7 +34,7 @@ var import_view = require("@codemirror/view");
 var import_state = require("@codemirror/state");
 var import_language = require("@codemirror/language");
 var import_obsidian = require("obsidian");
-var START_TAG = "|> ";
+var START_TAG = "|>";
 var END_TAG = "<|";
 var ToggleWidget = class extends import_view.WidgetType {
   constructor(isFolded, foldStart, foldEnd) {
@@ -60,6 +60,41 @@ var ToggleWidget = class extends import_view.WidgetType {
           effects: import_language.foldEffect.of({ from: this.foldStart, to: this.foldEnd })
         });
       }
+    };
+    return span;
+  }
+  ignoreEvent() {
+    return true;
+  }
+};
+var CopyWidget = class extends import_view.WidgetType {
+  constructor(startLineNo, endLineNo) {
+    super();
+    this.startLineNo = startLineNo;
+    this.endLineNo = endLineNo;
+  }
+  toDOM(view) {
+    console.log("DEBUG: CopyWidget created for line", this.startLineNo);
+    const span = document.createElement("span");
+    span.className = "toggle-copy-btn";
+    const iconInfo = (0, import_obsidian.getIcon)("copy");
+    if (iconInfo) {
+      span.appendChild(iconInfo);
+    } else {
+      span.textContent = "Copy";
+    }
+    span.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const doc = view.state.doc;
+      if (this.endLineNo <= this.startLineNo + 1) {
+        navigator.clipboard.writeText("");
+        return;
+      }
+      const fromPos = doc.line(this.startLineNo + 1).from;
+      const toPos = doc.line(this.endLineNo - 1).to;
+      const text = doc.sliceString(fromPos, toPos);
+      navigator.clipboard.writeText(text);
     };
     return span;
   }
@@ -99,7 +134,7 @@ var EndTagWidget = class extends import_view.WidgetType {
 function findMatchingEndLine(doc, startLineNo) {
   let stack = 1;
   for (let i = startLineNo + 1; i <= doc.lines; i++) {
-    const lineText = doc.line(i).text;
+    const lineText = doc.line(i).text.trimStart();
     if (lineText.startsWith(START_TAG)) {
       stack++;
     } else if (lineText.startsWith(END_TAG)) {
@@ -221,7 +256,7 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
         currentLevel += diff[i];
         const line = doc.line(i);
         const text = line.text;
-        const trimmedText = text.trim();
+        const trimmedText = text.trimStart();
         if (currentLevel > 0) {
           const safeLevel = Math.min(currentLevel, 8);
           let classNames = `toggle-bg toggle-bg-level-${safeLevel}`;
@@ -240,10 +275,11 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
           });
         }
         prevLevel = currentLevel;
-        if (text.startsWith(START_TAG)) {
+        if (trimmedText.startsWith(START_TAG)) {
           runningStack++;
-          const rangeFrom = line.from;
-          const rangeTo = line.from + START_TAG.length;
+          const indentLen = text.length - trimmedText.length;
+          const rangeFrom = line.from + indentLen;
+          const rangeTo = rangeFrom + START_TAG.length;
           let isSelected = false;
           for (const r of selection.ranges) {
             if (r.to >= rangeFrom && r.from <= rangeTo) {
@@ -267,6 +303,61 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
                 deco: import_view.Decoration.replace({
                   widget: new ToggleWidget(isFolded, foldStart, foldEnd),
                   inclusive: true
+                })
+              });
+            }
+          }
+        }
+        if (trimmedText.startsWith(END_TAG)) {
+          const indentLen = text.length - trimmedText.length;
+          const rangeFrom = line.from + indentLen;
+          const rangeTo = rangeFrom + END_TAG.length;
+          const isOrphan = runningStack === 0;
+          if (!isOrphan) {
+            runningStack--;
+          }
+          let isSelected = false;
+          for (const r of selection.ranges) {
+            if (r.to >= rangeFrom && r.from <= rangeTo) {
+              isSelected = true;
+              break;
+            }
+          }
+          if (!isSelected && !isOrphan) {
+            decos.push({
+              from: rangeFrom,
+              to: rangeTo,
+              deco: import_view.Decoration.replace({
+                widget: new EndTagWidget(rangeFrom, 0),
+                inclusive: true
+              })
+            });
+          }
+        }
+        if (trimmedText.startsWith(START_TAG)) {
+          const endLineNo = findMatchingEndLine(doc, i);
+          if (endLineNo !== -1) {
+            let isSelected = false;
+            for (const r of selection.ranges) {
+              const lineFrom = line.from;
+              const lineTo = line.to;
+              if (r.from >= lineFrom && r.to <= lineTo) {
+                isSelected = true;
+                break;
+              }
+              if (r.to >= lineFrom && r.from <= lineTo) {
+                isSelected = true;
+                break;
+              }
+            }
+            if (isSelected) {
+              decos.push({
+                from: line.to,
+                // Append to end of line
+                to: line.to,
+                deco: import_view.Decoration.widget({
+                  widget: new CopyWidget(i, endLineNo),
+                  side: 1
                 })
               });
             }

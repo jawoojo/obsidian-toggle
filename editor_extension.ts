@@ -24,7 +24,7 @@ import {
 import { getIcon } from "obsidian";
 
 // Constants
-const START_TAG = "|> ";
+const START_TAG = "|>";
 const END_TAG = "<|";
 const INDENT_STEP = 16.5; // Restored Base Grid (16.5px)
 
@@ -67,6 +67,7 @@ class CopyWidget extends WidgetType {
     }
 
     toDOM(view: EditorView): HTMLElement {
+        console.log("DEBUG: CopyWidget created for line", this.startLineNo);
         const span = document.createElement("span");
         span.className = "toggle-copy-btn";
 
@@ -77,6 +78,7 @@ class CopyWidget extends WidgetType {
         } else {
             span.textContent = "Copy";
         }
+
 
         span.onclick = (e) => {
             e.preventDefault();
@@ -145,7 +147,7 @@ class EndTagWidget extends WidgetType {
 function findMatchingEndLine(doc: Text, startLineNo: number): number {
     let stack = 1;
     for (let i = startLineNo + 1; i <= doc.lines; i++) {
-        const lineText = doc.line(i).text;
+        const lineText = doc.line(i).text.trimStart(); // [Updated] robust
         if (lineText.startsWith(START_TAG)) {
             stack++;
         } else if (lineText.startsWith(END_TAG)) {
@@ -328,7 +330,7 @@ const togglePlugin = ViewPlugin.fromClass(
                 currentLevel += diff[i];
                 const line = doc.line(i);
                 const text = line.text;
-                const trimmedText = text.trim();
+                const trimmedText = text.trimStart(); // [Updated] robust check
 
                 // 1. Background Highlight (Notion Callout Style)
                 if (currentLevel > 0) {
@@ -359,14 +361,31 @@ const togglePlugin = ViewPlugin.fromClass(
                 prevLevel = currentLevel;
 
                 // 2. Start Widget ("|> " -> Triangle)
-                if (text.startsWith(START_TAG)) {
+                if (trimmedText.startsWith(START_TAG)) {
                     runningStack++; // Push to stack
-                    // Check Reveal
-                    const rangeFrom = line.from;
-                    const rangeTo = line.from + START_TAG.length;
 
+                    // Use actual index from trim to preserve indentation
+                    const indentLen = text.length - trimmedText.length;
+                    const rangeFrom = line.from + indentLen;
+                    const rangeTo = rangeFrom + START_TAG.length;
+
+                    // Check Reveal
                     let isSelected = false;
                     for (const r of selection.ranges) {
+                        // Check if cursor touches the TAG itself (previous logic)
+                        // But now we check line selection for CopyWidget, 
+                        // For ToggleWidget, we hide it if the TAG range is touched? 
+                        // Standard behavior: if cursor is anywhere on line, showing RAW text is usually better for editing.
+                        // Let's check entire line intersection for simplicity, or keep specific range?
+                        // User said: "When I touch the line, copy button appears". 
+                        // User didn't say "When I touch the line, triangle disappears". 
+                        // But usually we show raw text when editing. 
+
+                        // Let's keep strict range check for replacing text with widget, 
+                        // so we don't annoy user by un-rendering triangle when they are editing END of line.
+                        // Wait, if I edit title, I want triangle to stay?
+                        // Usually Obsidian toggles: editing title -> triangle stays.
+                        // Editing TAG `|>` -> triangle reverts to text.
                         if (r.to >= rangeFrom && r.from <= rangeTo) {
                             isSelected = true;
                             break;
@@ -398,6 +417,75 @@ const togglePlugin = ViewPlugin.fromClass(
                 }
 
                 // 3. End Widget ("<|" -> Smart Visibility)
+                if (trimmedText.startsWith(END_TAG)) {
+                    // ... existing end tag logic ...
+                    const indentLen = text.length - trimmedText.length;
+                    const rangeFrom = line.from + indentLen;
+                    const rangeTo = rangeFrom + END_TAG.length;
+
+                    // Orphan Check
+                    const isOrphan = (runningStack === 0);
+                    if (!isOrphan) {
+                        runningStack--;
+                    }
+
+                    // Reveal on Click/Selection
+                    let isSelected = false;
+                    for (const r of selection.ranges) {
+                        if (r.to >= rangeFrom && r.from <= rangeTo) {
+                            isSelected = true;
+                            break;
+                        }
+                    }
+
+                    if (!isSelected && !isOrphan) {
+                        decos.push({
+                            from: rangeFrom,
+                            to: rangeTo,
+                            deco: Decoration.replace({
+                                widget: new EndTagWidget(rangeFrom, 0),
+                                inclusive: true
+                            })
+                        });
+                    }
+                }
+
+                // [Refined] Copy Widget (Show on Selection)
+                // Use trimmedText to be robust against indentation
+                if (trimmedText.startsWith(START_TAG)) {
+                    const endLineNo = findMatchingEndLine(doc, i);
+
+                    if (endLineNo !== -1) {
+                        // Check if this line is part of current selection
+                        let isSelected = false;
+                        for (const r of selection.ranges) {
+                            // Check if cursor is on this line
+                            const lineFrom = line.from;
+                            const lineTo = line.to;
+                            if (r.from >= lineFrom && r.to <= lineTo) {
+                                isSelected = true;
+                                break;
+                            }
+                            // Or overlapping (selection spans multiple lines)
+                            if (r.to >= lineFrom && r.from <= lineTo) {
+                                isSelected = true;
+                                break;
+                            }
+                        }
+
+                        // Show if Selected (User Request)
+                        if (isSelected) {
+                            decos.push({
+                                from: line.to, // Append to end of line
+                                to: line.to,
+                                deco: Decoration.widget({
+                                    widget: new CopyWidget(i, endLineNo),
+                                    side: 1
+                                })
+                            });
+                        }
+                    }
+                }
                 if (text.startsWith(END_TAG)) {
                     const rangeFrom = line.from;
                     const rangeTo = line.from + END_TAG.length;
