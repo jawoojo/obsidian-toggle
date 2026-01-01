@@ -242,6 +242,23 @@ const notionFoldService = foldService.of((state: EditorState, lineStart: number,
         }
     }
 
+    // Case 3: Code Block Fold (``` ... ```)
+    if (text.startsWith("```")) {
+        // Find matching end logic 
+        let codeBlockEndLine = -1;
+        for (let i = line.number + 1; i <= state.doc.lines; i++) {
+            if (state.doc.line(i).text.trimStart().startsWith("```")) {
+                codeBlockEndLine = i; // Use the end delimiter line
+                break;
+            }
+        }
+
+        if (codeBlockEndLine !== -1) {
+            const endLine = state.doc.line(codeBlockEndLine);
+            return { from: line.to, to: endLine.to };
+        }
+    }
+
     return null;
 });
 
@@ -411,63 +428,12 @@ const togglePlugin = ViewPlugin.fromClass(
                 // Update prevLevel for next iteration
                 prevLevel = currentLevel;
 
-                // [New Feature] Code Block Toggles (```)
-                // Logic: Treat ``` as a toggle start, but WITHOUT styling (bg/rounding)
+                // [Modified] Code Block Tracking (Guard Only)
+                // Just track state to ignore |> inside code blocks.
+                // Leave visualization/folding to Obsidian native features.
                 if (trimmedText.startsWith("```")) {
-                    if (!inCodeBlock) {
-                        // START of Code Block
-                        inCodeBlock = true;
-
-                        // Find matching end logic 
-                        // (Simple lookahead since code blocks don't nest)
-                        let codeBlockEndLine = -1;
-                        for (let k = i + 1; k <= lineCount; k++) {
-                            if (doc.line(k).text.trimStart().startsWith("```")) {
-                                codeBlockEndLine = k;
-                                break;
-                            }
-                        }
-
-                        if (codeBlockEndLine !== -1) {
-                            const indentLen = text.length - trimmedText.length;
-                            const rangeFrom = line.from + indentLen;
-                            const rangeTo = rangeFrom + 3; // Length of ```
-
-                            // Check Reveal (Cursor logic reuse)
-                            let isSelected = false;
-                            for (const r of selection.ranges) {
-                                if (r.to >= rangeFrom && r.from <= rangeTo) {
-                                    isSelected = true;
-                                    break;
-                                }
-                            }
-
-                            if (!isSelected) {
-                                const foldStart = line.to;
-                                const foldEnd = doc.line(codeBlockEndLine).to;
-
-                                let isFolded = false;
-                                ranges.between(foldStart, foldEnd, (from, to) => {
-                                    if (from === foldStart && to === foldEnd) isFolded = true;
-                                });
-
-                                decos.push({
-                                    from: rangeFrom,
-                                    to: rangeTo,
-                                    deco: Decoration.replace({
-                                        widget: new ToggleWidget(isFolded, foldStart, foldEnd),
-                                        inclusive: true
-                                    })
-                                });
-                            }
-                        }
-                    } else {
-                        // END of Code Block
-                        inCodeBlock = false;
-                        // Just leave "```" visible (no widget)
-                    }
-
-                    // Skip regular toggle processing for code block delimiter lines
+                    // Simple toggle assumption for valid markdown (non-nested)
+                    inCodeBlock = !inCodeBlock;
                     continue;
                 }
 

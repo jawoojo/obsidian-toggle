@@ -195,6 +195,19 @@ var notionFoldService = import_language.foldService.of((state, lineStart, lineEn
       return { from: line.to, to: doc.line(endLineNo).to };
     }
   }
+  if (text.startsWith("```")) {
+    let codeBlockEndLine = -1;
+    for (let i = line.number + 1; i <= state.doc.lines; i++) {
+      if (state.doc.line(i).text.trimStart().startsWith("```")) {
+        codeBlockEndLine = i;
+        break;
+      }
+    }
+    if (codeBlockEndLine !== -1) {
+      const endLine = state.doc.line(codeBlockEndLine);
+      return { from: line.to, to: endLine.to };
+    }
+  }
   return null;
 });
 var togglePlugin = import_view.ViewPlugin.fromClass(
@@ -311,47 +324,7 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
         }
         prevLevel = currentLevel;
         if (trimmedText.startsWith("```")) {
-          if (!inCodeBlock) {
-            inCodeBlock = true;
-            let codeBlockEndLine = -1;
-            for (let k = i + 1; k <= lineCount; k++) {
-              if (doc.line(k).text.trimStart().startsWith("```")) {
-                codeBlockEndLine = k;
-                break;
-              }
-            }
-            if (codeBlockEndLine !== -1) {
-              const indentLen = text.length - trimmedText.length;
-              const rangeFrom = line.from + indentLen;
-              const rangeTo = rangeFrom + 3;
-              let isSelected = false;
-              for (const r of selection.ranges) {
-                if (r.to >= rangeFrom && r.from <= rangeTo) {
-                  isSelected = true;
-                  break;
-                }
-              }
-              if (!isSelected) {
-                const foldStart = line.to;
-                const foldEnd = doc.line(codeBlockEndLine).to;
-                let isFolded = false;
-                ranges.between(foldStart, foldEnd, (from, to) => {
-                  if (from === foldStart && to === foldEnd)
-                    isFolded = true;
-                });
-                decos.push({
-                  from: rangeFrom,
-                  to: rangeTo,
-                  deco: import_view.Decoration.replace({
-                    widget: new ToggleWidget(isFolded, foldStart, foldEnd),
-                    inclusive: true
-                  })
-                });
-              }
-            }
-          } else {
-            inCodeBlock = false;
-          }
+          inCodeBlock = !inCodeBlock;
           continue;
         }
         if (inCodeBlock)
