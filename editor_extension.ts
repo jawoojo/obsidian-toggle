@@ -21,6 +21,7 @@ import {
     unfoldEffect,
     foldedRanges
 } from "@codemirror/language";
+import { getIcon } from "obsidian";
 
 // Constants
 const START_TAG = "|> ";
@@ -52,6 +53,52 @@ class ToggleWidget extends WidgetType {
                     effects: foldEffect.of({ from: this.foldStart, to: this.foldEnd })
                 });
             }
+        };
+        return span;
+    }
+
+    ignoreEvent(): boolean { return true; }
+}
+
+// [PRD Example] Copy Widget (Top-Right)
+class CopyWidget extends WidgetType {
+    constructor(readonly startLineNo: number, readonly endLineNo: number) {
+        super();
+    }
+
+    toDOM(view: EditorView): HTMLElement {
+        const span = document.createElement("span");
+        span.className = "toggle-copy-btn";
+
+        // Use native Obsidian icon
+        const iconInfo = getIcon("copy");
+        if (iconInfo) {
+            span.appendChild(iconInfo);
+        } else {
+            span.textContent = "Copy";
+        }
+
+        span.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Logic: Copy content BETWEEN start and end tags
+            const doc = view.state.doc;
+
+            // Safety check: if empty or immediate close
+            if (this.endLineNo <= this.startLineNo + 1) {
+                navigator.clipboard.writeText("");
+                return;
+            }
+
+            // content starts at startLine + 1
+            // content ends at endLine - 1
+            const fromPos = doc.line(this.startLineNo + 1).from;
+            const toPos = doc.line(this.endLineNo - 1).to;
+
+            // Slice preserves newlines
+            const text = doc.sliceString(fromPos, toPos);
+            navigator.clipboard.writeText(text);
         };
         return span;
     }

@@ -10,14 +10,14 @@
 
 /* Start Tag Line -> Round Top */
 .toggle-round-top {
-    border-top-left-radius: 4px !important;
-    border-top-right-radius: 4px !important;
+    border-top-left-radius: 5px !important;
+    border-top-right-radius: 5px !important;
 }
 
 /* End Tag Line -> Round Bottom */
 .toggle-round-bot {
-    border-bottom-left-radius: 4px !important;
-    border-bottom-right-radius: 4px !important;
+    border-bottom-left-radius: 5px !important;
+    border-bottom-right-radius: 5px !important;
 }
 
 /* Cleanup: Complex sibling selectors removed */
@@ -120,4 +120,45 @@
 .toggle-end-widget:hover {
     background-color: var(--interactive-accent);
     cursor: pointer;
+}
+
+/* [NEW] Copy Button Style */
+.toggle-copy-btn {
+    position: absolute;
+    right: 8px;
+    /* Slight padding from right edge */
+    top: 4px;
+    /* Align with text */
+    opacity: 0;
+    /* Default Hidden */
+    cursor: pointer;
+    z-index: 10;
+
+    /* Icon styling */
+    color: var(--text-muted);
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    transition: opacity 0.2s ease, background-color 0.2s ease;
+}
+
+.toggle-copy-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Show on Hover (Parent Line Hover) */
+/* We need to target the .toggle-bg line when hovered. */
+/* Wait, the widget is inside the line content. */
+.cm-line:hover .toggle-copy-btn {
+    opacity: 1;
+}
+
+/* Hover on Button itself */
+.toggle-copy-btn:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
 }
