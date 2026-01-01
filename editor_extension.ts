@@ -252,8 +252,28 @@ const togglePlugin = ViewPlugin.fromClass(
         update(update: ViewUpdate) {
             let shouldUpdate = update.docChanged || update.viewportChanged || update.transactions.some(tr => tr.effects.some((e: StateEffect<any>) => e.is(foldEffect) || e.is(unfoldEffect)));
 
-            // [Optimized] Update logic simplified: Only standard triggers needed
-            // CSS handles active-line visibility now.
+            // [Restored] Update on selection change to Reveal Toggles (Editor Mode)
+            // While CSS handles Copy Button, JS must handle switching Triangle <-> Text
+            if (!shouldUpdate && update.selectionSet) {
+                const hasOverlap = (state: EditorState) => {
+                    for (const range of state.selection.ranges) {
+                        const line = state.doc.lineAt(range.head);
+                        const text = line.text.trimStart();
+                        // If we touch the START_TAG, we need to re-render to show raw text
+                        if (text.startsWith(START_TAG)) return true;
+                        // End Tag also uses JS replacement, so monitor it too
+                        if (text.startsWith(END_TAG)) return true;
+                    }
+                    return false;
+                };
+
+                const prevOverlap = hasOverlap(update.startState);
+                const currOverlap = hasOverlap(update.state);
+
+                if (prevOverlap || currOverlap) {
+                    shouldUpdate = true;
+                }
+            }
 
             if (shouldUpdate) {
                 this.decorations = this.buildDecorations(update.view);
