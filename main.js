@@ -34,7 +34,7 @@ var import_view = require("@codemirror/view");
 var import_state = require("@codemirror/state");
 var import_language = require("@codemirror/language");
 var import_obsidian = require("obsidian");
-var START_TAG = "|>";
+var START_TAG = "|> ";
 var END_TAG = "<|";
 var ToggleWidget = class extends import_view.WidgetType {
   constructor(isFolded, foldStart, foldEnd) {
@@ -198,27 +198,6 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
     }
     update(update) {
       let shouldUpdate = update.docChanged || update.viewportChanged || update.transactions.some((tr) => tr.effects.some((e) => e.is(import_language.foldEffect) || e.is(import_language.unfoldEffect)));
-      if (!shouldUpdate && update.selectionSet) {
-        const hasOverlap = (state) => {
-          for (const range of state.selection.ranges) {
-            const line = state.doc.lineAt(range.head);
-            const text = line.text;
-            if (text.startsWith(START_TAG)) {
-              if (range.from <= line.from + START_TAG.length && range.to >= line.from)
-                return true;
-            } else if (text.startsWith(END_TAG)) {
-              if (range.from <= line.from + END_TAG.length && range.to >= line.from)
-                return true;
-            }
-          }
-          return false;
-        };
-        const prevOverlap = hasOverlap(update.startState);
-        const currOverlap = hasOverlap(update.state);
-        if (prevOverlap || currOverlap) {
-          shouldUpdate = true;
-        }
-      }
       if (shouldUpdate) {
         this.decorations = this.buildDecorations(update.view);
       }
@@ -337,30 +316,15 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
         if (trimmedText.startsWith(START_TAG)) {
           const endLineNo = findMatchingEndLine(doc, i);
           if (endLineNo !== -1) {
-            let isSelected = false;
-            for (const r of selection.ranges) {
-              const lineFrom = line.from;
-              const lineTo = line.to;
-              if (r.from >= lineFrom && r.to <= lineTo) {
-                isSelected = true;
-                break;
-              }
-              if (r.to >= lineFrom && r.from <= lineTo) {
-                isSelected = true;
-                break;
-              }
-            }
-            if (isSelected) {
-              decos.push({
-                from: line.to,
-                // Append to end of line
-                to: line.to,
-                deco: import_view.Decoration.widget({
-                  widget: new CopyWidget(i, endLineNo),
-                  side: 1
-                })
-              });
-            }
+            decos.push({
+              from: line.to,
+              // Append to end of line
+              to: line.to,
+              deco: import_view.Decoration.widget({
+                widget: new CopyWidget(i, endLineNo),
+                side: 1
+              })
+            });
           }
         }
         if (text.startsWith(END_TAG)) {

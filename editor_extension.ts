@@ -24,7 +24,7 @@ import {
 import { getIcon } from "obsidian";
 
 // Constants
-const START_TAG = "|>";
+const START_TAG = "|> "; // [Reverted] Strict space required
 const END_TAG = "<|";
 const INDENT_STEP = 16.5; // Restored Base Grid (16.5px)
 
@@ -252,31 +252,8 @@ const togglePlugin = ViewPlugin.fromClass(
         update(update: ViewUpdate) {
             let shouldUpdate = update.docChanged || update.viewportChanged || update.transactions.some(tr => tr.effects.some((e: StateEffect<any>) => e.is(foldEffect) || e.is(unfoldEffect)));
 
-            // [Enhanced] Update on selection change if we are interacting with ANY TAG
-            if (!shouldUpdate && update.selectionSet) {
-                const hasOverlap = (state: EditorState) => {
-                    for (const range of state.selection.ranges) {
-                        const line = state.doc.lineAt(range.head);
-                        const text = line.text;
-                        // Check Start Tag
-                        if (text.startsWith(START_TAG)) {
-                            if (range.from <= line.from + START_TAG.length && range.to >= line.from) return true;
-                        }
-                        // Check End Tag
-                        else if (text.startsWith(END_TAG)) {
-                            if (range.from <= line.from + END_TAG.length && range.to >= line.from) return true;
-                        }
-                    }
-                    return false;
-                };
-
-                const prevOverlap = hasOverlap(update.startState);
-                const currOverlap = hasOverlap(update.state);
-
-                if (prevOverlap || currOverlap) {
-                    shouldUpdate = true;
-                }
-            }
+            // [Optimized] Update logic simplified: Only standard triggers needed
+            // CSS handles active-line visibility now.
 
             if (shouldUpdate) {
                 this.decorations = this.buildDecorations(update.view);
@@ -450,40 +427,20 @@ const togglePlugin = ViewPlugin.fromClass(
                     }
                 }
 
-                // [Refined] Copy Widget (Show on Selection)
-                // Use trimmedText to be robust against indentation
+                // [Optimized] Copy Widget (Always Inject, CSS handles visibility)
                 if (trimmedText.startsWith(START_TAG)) {
                     const endLineNo = findMatchingEndLine(doc, i);
 
                     if (endLineNo !== -1) {
-                        // Check if this line is part of current selection
-                        let isSelected = false;
-                        for (const r of selection.ranges) {
-                            // Check if cursor is on this line
-                            const lineFrom = line.from;
-                            const lineTo = line.to;
-                            if (r.from >= lineFrom && r.to <= lineTo) {
-                                isSelected = true;
-                                break;
-                            }
-                            // Or overlapping (selection spans multiple lines)
-                            if (r.to >= lineFrom && r.from <= lineTo) {
-                                isSelected = true;
-                                break;
-                            }
-                        }
-
-                        // Show if Selected (User Request)
-                        if (isSelected) {
-                            decos.push({
-                                from: line.to, // Append to end of line
-                                to: line.to,
-                                deco: Decoration.widget({
-                                    widget: new CopyWidget(i, endLineNo),
-                                    side: 1
-                                })
-                            });
-                        }
+                        // Always add the widget. CSS will hide it unless .cm-activeLine is present.
+                        decos.push({
+                            from: line.to, // Append to end of line
+                            to: line.to,
+                            deco: Decoration.widget({
+                                widget: new CopyWidget(i, endLineNo),
+                                side: 1
+                            })
+                        });
                     }
                 }
                 if (text.startsWith(END_TAG)) {

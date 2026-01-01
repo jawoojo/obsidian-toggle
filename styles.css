@@ -129,9 +129,9 @@
     position: absolute;
     right: 8px;
     top: 4px;
-    /* DEBUG STYLES START */
-    opacity: 1;
-    /* Visible when injected (controlled by JS selection) */
+    /* Default State: Hidden (Eco-Friendly) */
+    opacity: 0;
+
     background-color: transparent;
     cursor: pointer;
     z-index: 10;
@@ -144,7 +144,8 @@
     align-items: center;
     justify-content: center;
     border-radius: 4px;
-    transition: opacity 0.2s ease, background-color 0.2s ease;
+    transition: opacity 0.1s ease;
+    /* Faster transition for responsive feel */
 }
 
 .toggle-copy-btn svg {
@@ -152,9 +153,13 @@
     height: 16px;
 }
 
-/* Show on Hover (Parent Line Hover) */
-/* We need to target the .toggle-bg line when hovered. */
-/* Wait, the widget is inside the line content. */
+/* [Eco-Friendly] Only show when parent line reads User Focus */
+/* CodeMirror adds .cm-activeLine to the line container where cursor is */
+.cm-activeLine .toggle-copy-btn {
+    opacity: 1;
+}
+
+/* Also show on hover for convenience */
 .cm-line:hover .toggle-copy-btn {
     opacity: 1;
 }
