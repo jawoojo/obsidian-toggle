@@ -198,6 +198,24 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
     }
     update(update) {
       let shouldUpdate = update.docChanged || update.viewportChanged || update.transactions.some((tr) => tr.effects.some((e) => e.is(import_language.foldEffect) || e.is(import_language.unfoldEffect)));
+      if (!shouldUpdate && update.selectionSet) {
+        const hasOverlap = (state) => {
+          for (const range of state.selection.ranges) {
+            const line = state.doc.lineAt(range.head);
+            const text = line.text.trimStart();
+            if (text.startsWith(START_TAG))
+              return true;
+            if (text.startsWith(END_TAG))
+              return true;
+          }
+          return false;
+        };
+        const prevOverlap = hasOverlap(update.startState);
+        const currOverlap = hasOverlap(update.state);
+        if (prevOverlap || currOverlap) {
+          shouldUpdate = true;
+        }
+      }
       if (shouldUpdate) {
         this.decorations = this.buildDecorations(update.view);
       }
