@@ -1,4 +1,4 @@
-# Obsidian Notion-Style Toggle Plugin
+# Toggle (Obsidian Plugin)
 
 ## 개발자 설치 가이드
 
@@ -23,7 +23,7 @@ npm run build
 2. **플러그인 폴더 만들기**:
     - 숨김 폴더인 `.obsidian` 폴더로 들어가세요. (파인더에서 `Cmd + Shift + .` 키를 누르면 숨김 파일이 보입니다)
     - `.obsidian/plugins/` 경로로 들어갑니다.
-    - 여기에 `obsidian-notion-toggle` 이라는 이름으로 새 폴더를 만듭니다.
+    - 여기에 `obsidian-toggle` 이라는 이름으로 새 폴더를 만듭니다.
 3. **파일 복사**:
     - 방금 빌드한 프로젝트 폴더에서 다음 3개 파일을 복사해서 위에서 만든 폴더에 붙여넣습니다.
         - `main.js`
@@ -35,9 +35,9 @@ npm run build
 1. 옵시디언을 켭니다.
 2. '설정(Settings)' > '커뮤니티 플러그인(Community Plugins)'으로 이동합니다.
 3. '제한 모드(Restricted mode)'가 켜져 있다면 끕니다.
-4. 아래 목록에서 **Notion Style Toggle** 플러그인을 찾아 활성화 스위치를 켭니다.
+4. 아래 목록에서 **Toggle** 플러그인을 찾아 활성화 스위치를 켭니다.
 
 ## 사용법
 
-- 문장 맨 앞에 `>> ` (꺽쇠 두 개와 띄어쓰기)를 입력하면 토글이 생성됩니다.
-- 삼각형 버튼을 눌러 접었다 폈다 할 수 있습니다.
+- 문장 맨 앞에 `|> ` (파이프+꺽쇠)를 입력하면 토글이 생성됩니다.
+- `Space`를 누르면 자동으로 닫는 태그가 생성됩니다.
