@@ -74,7 +74,6 @@ var CopyWidget = class extends import_view.WidgetType {
     this.endLineNo = endLineNo;
   }
   toDOM(view) {
-    console.log("DEBUG: CopyWidget created for line", this.startLineNo);
     const span = document.createElement("span");
     span.className = "toggle-copy-btn";
     const iconInfo = (0, import_obsidian.getIcon)("copy");

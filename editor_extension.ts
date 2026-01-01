@@ -67,7 +67,6 @@ class CopyWidget extends WidgetType {
     }
 
     toDOM(view: EditorView): HTMLElement {
-        console.log("DEBUG: CopyWidget created for line", this.startLineNo);
         const span = document.createElement("span");
         span.className = "toggle-copy-btn";
 
