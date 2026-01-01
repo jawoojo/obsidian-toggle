@@ -139,6 +139,14 @@ class EndTagWidget extends WidgetType {
     ignoreEvent(): boolean { return false; }
 }
 
+class HeaderHashWidget extends WidgetType {
+    toDOM(view: EditorView): HTMLElement {
+        const span = document.createElement("span");
+        span.className = "toggle-header-hash-widget";
+        return span;
+    }
+}
+
 // [Refactor] SpacerWidget Removed
 // class SpacerWidget extends WidgetType { ... }
 
@@ -340,15 +348,48 @@ const togglePlugin = ViewPlugin.fromClass(
 
                         // [New Feature] Header Support (e.g. |> # Title)
                         // Parse content after |> to find Headers
-                        const contentAfter = trimmedText.slice(START_TAG.length);
-                        // Regex: Start with optional space, then 1-6 hashes, then space (Strict Markdown Header)
-                        const headerMatch = contentAfter.match(/^\s*(#{1,6})\s/);
+                        try {
+                            const contentAfter = trimmedText.slice(START_TAG.length);
+                            // Regex: Start with optional space, then 1-6 hashes, then space (Strict Markdown Header)
+                            const headerMatch = contentAfter.match(/^\s*(#{1,6})\s/);
 
-                        if (headerMatch) {
-                            const level = headerMatch[1].length;
-                            // Inject Native Obsidian Header Classes
-                            // This allows inheritance of font-size, color, weight from current theme
-                            classNames += ` cm-header cm-header-${level} HyperMD-header HyperMD-header-${level}`;
+                            if (headerMatch) {
+                                const level = headerMatch[1].length;
+                                // Inject Native Obsidian Header Classes
+                                classNames += ` cm-header cm-header-${level} HyperMD-header HyperMD-header-${level}`;
+
+                                // [Refined] Hide Hashes if NOT selected (Line Level Check)
+                                // "Solve it by hiding only when cursor is elsewhere" -> Safer for IME
+                                let isLineSelected = false;
+                                for (const r of selection.ranges) {
+                                    // Check overlap with the ENTIRE line range
+                                    if (r.to >= line.from && r.from <= line.to) {
+                                        isLineSelected = true;
+                                        break;
+                                    }
+                                }
+
+                                if (!isLineSelected) {
+                                    const indentLen = text.length - trimmedText.length;
+                                    // Calculate strict range for replacement
+                                    const hashStart = line.from + indentLen + START_TAG.length + headerMatch.index!;
+                                    const hashEnd = hashStart + headerMatch[0].length;
+
+                                    // Safety check boundaries
+                                    if (hashEnd <= line.to) {
+                                        decos.push({
+                                            from: hashStart,
+                                            to: hashEnd,
+                                            deco: Decoration.replace({
+                                                widget: new HeaderHashWidget(),
+                                                inclusive: true
+                                            })
+                                        });
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            // Fail silently to preserve editor stability
                         }
                     }
 
@@ -509,6 +550,16 @@ const togglePlugin = ViewPlugin.fromClass(
                     }
                 }
             }
+
+            // Sort decorations by 'from' to satisfy RangeSetBuilder requirement (must be strictly increasing)
+            decos.sort((a, b) => {
+                if (a.from !== b.from) return a.from - b.from;
+                // If same position, ensure proper order (Line decos usually first?)
+                // Actually RangeSetBuilder supports same loop if we handle side?
+                // But safest is to just sort by position then startSide if possible.
+                // Let's just sort by position for now.
+                return 0;
+            });
 
             const builder = new RangeSetBuilder<Decoration>();
             for (const d of decos) {

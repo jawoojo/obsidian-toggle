@@ -130,6 +130,13 @@ var EndTagWidget = class extends import_view.WidgetType {
     return false;
   }
 };
+var HeaderHashWidget = class extends import_view.WidgetType {
+  toDOM(view) {
+    const span = document.createElement("span");
+    span.className = "toggle-header-hash-widget";
+    return span;
+  }
+};
 function findMatchingEndLine(doc, startLineNo) {
   let stack = 1;
   for (let i = startLineNo + 1; i <= doc.lines; i++) {
@@ -258,11 +265,36 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
           let classNames = `toggle-bg toggle-bg-level-${safeLevel}`;
           if (trimmedText.startsWith(START_TAG)) {
             classNames += " toggle-round-top";
-            const contentAfter = trimmedText.slice(START_TAG.length);
-            const headerMatch = contentAfter.match(/^\s*(#{1,6})\s/);
-            if (headerMatch) {
-              const level = headerMatch[1].length;
-              classNames += ` cm-header cm-header-${level} HyperMD-header HyperMD-header-${level}`;
+            try {
+              const contentAfter = trimmedText.slice(START_TAG.length);
+              const headerMatch = contentAfter.match(/^\s*(#{1,6})\s/);
+              if (headerMatch) {
+                const level = headerMatch[1].length;
+                classNames += ` cm-header cm-header-${level} HyperMD-header HyperMD-header-${level}`;
+                let isLineSelected = false;
+                for (const r of selection.ranges) {
+                  if (r.to >= line.from && r.from <= line.to) {
+                    isLineSelected = true;
+                    break;
+                  }
+                }
+                if (!isLineSelected) {
+                  const indentLen = text.length - trimmedText.length;
+                  const hashStart = line.from + indentLen + START_TAG.length + headerMatch.index;
+                  const hashEnd = hashStart + headerMatch[0].length;
+                  if (hashEnd <= line.to) {
+                    decos.push({
+                      from: hashStart,
+                      to: hashEnd,
+                      deco: import_view.Decoration.replace({
+                        widget: new HeaderHashWidget(),
+                        inclusive: true
+                      })
+                    });
+                  }
+                }
+              }
+            } catch (e) {
             }
           }
           if (trimmedText.startsWith(END_TAG)) {
@@ -376,6 +408,11 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
           }
         }
       }
+      decos.sort((a, b) => {
+        if (a.from !== b.from)
+          return a.from - b.from;
+        return 0;
+      });
       const builder = new import_state.RangeSetBuilder();
       for (const d of decos) {
         builder.add(d.from, d.to, d.deco);

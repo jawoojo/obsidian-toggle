@@ -107,6 +107,12 @@
     color: var(--text-accent);
 }
 
+/* [NEW] Header Hash Hiding Widget */
+.toggle-header-hash-widget {
+    display: none;
+    /* Hide the replaced hash text completely */
+}
+
 /* [NEW] End Tag Line Style (<|) */
 .toggle-end-widget {
     /* [Changed] Invisible End Tag */
