@@ -329,6 +329,7 @@ const togglePlugin = ViewPlugin.fromClass(
             let prevLevel = 0; // [New] Track previous line's level
             // Orphan Detection Stack
             let runningStack = 0;
+            let inCodeBlock = false; // [New] Track Code Block State
 
             for (let i = 1; i <= lineCount; i++) {
                 currentLevel += diff[i];
@@ -409,6 +410,69 @@ const togglePlugin = ViewPlugin.fromClass(
 
                 // Update prevLevel for next iteration
                 prevLevel = currentLevel;
+
+                // [New Feature] Code Block Toggles (```)
+                // Logic: Treat ``` as a toggle start, but WITHOUT styling (bg/rounding)
+                if (trimmedText.startsWith("```")) {
+                    if (!inCodeBlock) {
+                        // START of Code Block
+                        inCodeBlock = true;
+
+                        // Find matching end logic 
+                        // (Simple lookahead since code blocks don't nest)
+                        let codeBlockEndLine = -1;
+                        for (let k = i + 1; k <= lineCount; k++) {
+                            if (doc.line(k).text.trimStart().startsWith("```")) {
+                                codeBlockEndLine = k;
+                                break;
+                            }
+                        }
+
+                        if (codeBlockEndLine !== -1) {
+                            const indentLen = text.length - trimmedText.length;
+                            const rangeFrom = line.from + indentLen;
+                            const rangeTo = rangeFrom + 3; // Length of ```
+
+                            // Check Reveal (Cursor logic reuse)
+                            let isSelected = false;
+                            for (const r of selection.ranges) {
+                                if (r.to >= rangeFrom && r.from <= rangeTo) {
+                                    isSelected = true;
+                                    break;
+                                }
+                            }
+
+                            if (!isSelected) {
+                                const foldStart = line.to;
+                                const foldEnd = doc.line(codeBlockEndLine).to;
+
+                                let isFolded = false;
+                                ranges.between(foldStart, foldEnd, (from, to) => {
+                                    if (from === foldStart && to === foldEnd) isFolded = true;
+                                });
+
+                                decos.push({
+                                    from: rangeFrom,
+                                    to: rangeTo,
+                                    deco: Decoration.replace({
+                                        widget: new ToggleWidget(isFolded, foldStart, foldEnd),
+                                        inclusive: true
+                                    })
+                                });
+                            }
+                        }
+                    } else {
+                        // END of Code Block
+                        inCodeBlock = false;
+                        // Just leave "```" visible (no widget)
+                    }
+
+                    // Skip regular toggle processing for code block delimiter lines
+                    continue;
+                }
+
+                // Skip processing if inside code block (Prevent |> inside code block from acting as toggle)
+                if (inCodeBlock) continue;
 
                 // 2. Start Widget ("|> " -> Triangle)
                 if (trimmedText.startsWith(START_TAG)) {

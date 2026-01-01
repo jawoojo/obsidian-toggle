@@ -255,6 +255,7 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
       let currentLevel = 0;
       let prevLevel = 0;
       let runningStack = 0;
+      let inCodeBlock = false;
       for (let i = 1; i <= lineCount; i++) {
         currentLevel += diff[i];
         const line = doc.line(i);
@@ -309,6 +310,52 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
           });
         }
         prevLevel = currentLevel;
+        if (trimmedText.startsWith("```")) {
+          if (!inCodeBlock) {
+            inCodeBlock = true;
+            let codeBlockEndLine = -1;
+            for (let k = i + 1; k <= lineCount; k++) {
+              if (doc.line(k).text.trimStart().startsWith("```")) {
+                codeBlockEndLine = k;
+                break;
+              }
+            }
+            if (codeBlockEndLine !== -1) {
+              const indentLen = text.length - trimmedText.length;
+              const rangeFrom = line.from + indentLen;
+              const rangeTo = rangeFrom + 3;
+              let isSelected = false;
+              for (const r of selection.ranges) {
+                if (r.to >= rangeFrom && r.from <= rangeTo) {
+                  isSelected = true;
+                  break;
+                }
+              }
+              if (!isSelected) {
+                const foldStart = line.to;
+                const foldEnd = doc.line(codeBlockEndLine).to;
+                let isFolded = false;
+                ranges.between(foldStart, foldEnd, (from, to) => {
+                  if (from === foldStart && to === foldEnd)
+                    isFolded = true;
+                });
+                decos.push({
+                  from: rangeFrom,
+                  to: rangeTo,
+                  deco: import_view.Decoration.replace({
+                    widget: new ToggleWidget(isFolded, foldStart, foldEnd),
+                    inclusive: true
+                  })
+                });
+              }
+            }
+          } else {
+            inCodeBlock = false;
+          }
+          continue;
+        }
+        if (inCodeBlock)
+          continue;
         if (trimmedText.startsWith(START_TAG)) {
           runningStack++;
           const indentLen = text.length - trimmedText.length;
