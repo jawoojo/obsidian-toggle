@@ -622,6 +622,28 @@ var TogglePlugin = class extends import_obsidian3.Plugin {
     console.log("Loading Toggle Plugin V3.1 (Nested Toggles + Native)");
     this.registerEditorExtension(toggleExtension);
     this.registerMarkdownPostProcessor((el, ctx) => readingModeProcessor(el, ctx));
+    this.addCommand({
+      id: "insert-toggle",
+      name: "Insert Toggle",
+      editorCallback: (editor) => {
+        const selection = editor.getSelection();
+        if (selection) {
+          editor.replaceSelection(`|> 
+${selection}
+<|`);
+        } else {
+          const start = "|> ";
+          const body = "\n\n";
+          const end = "<|";
+          const cursorBefore = editor.getCursor();
+          editor.replaceSelection(start + body + end);
+          editor.setCursor({
+            line: cursorBefore.line,
+            ch: cursorBefore.ch + 3
+          });
+        }
+      }
+    });
   }
   onunload() {
     console.log("Unloading Toggle Plugin");
