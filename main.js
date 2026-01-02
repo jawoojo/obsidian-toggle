@@ -37,30 +37,35 @@ var import_obsidian = require("obsidian");
 var START_TAG = "|> ";
 var END_TAG = "<|";
 var ToggleWidget = class extends import_view.WidgetType {
-  constructor(isFolded, foldStart, foldEnd) {
+  constructor(isFolded, foldStart, foldEnd, invisible = false) {
     super();
     this.isFolded = isFolded;
     this.foldStart = foldStart;
     this.foldEnd = foldEnd;
+    this.invisible = invisible;
   }
   toDOM(view) {
     const span = document.createElement("span");
     span.className = "toggle-widget";
-    span.textContent = this.isFolded ? "\u25B6" : "\u25BC";
-    span.style.cursor = "pointer";
-    span.onclick = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (this.isFolded) {
-        view.dispatch({
-          effects: import_language.unfoldEffect.of({ from: this.foldStart, to: this.foldEnd })
-        });
-      } else {
-        view.dispatch({
-          effects: import_language.foldEffect.of({ from: this.foldStart, to: this.foldEnd })
-        });
-      }
-    };
+    if (this.invisible) {
+      span.style.display = "none";
+    } else {
+      span.textContent = this.isFolded ? "\u25B6" : "\u25BC";
+      span.style.cursor = "pointer";
+      span.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (this.isFolded) {
+          view.dispatch({
+            effects: import_language.unfoldEffect.of({ from: this.foldStart, to: this.foldEnd })
+          });
+        } else {
+          view.dispatch({
+            effects: import_language.foldEffect.of({ from: this.foldStart, to: this.foldEnd })
+          });
+        }
+      };
+    }
     return span;
   }
   ignoreEvent() {
@@ -346,6 +351,8 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
               break;
             }
           }
+          const contentAfter = trimmedText.slice(START_TAG.length);
+          const isHeader = /^\s*(#{1,6})\s/.test(contentAfter);
           if (!isSelected) {
             const endLineNo = findMatchingEndLine(doc, i);
             if (endLineNo !== -1) {
@@ -360,7 +367,8 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
                 from: rangeFrom,
                 to: rangeTo,
                 deco: import_view.Decoration.replace({
-                  widget: new ToggleWidget(isFolded, foldStart, foldEnd),
+                  widget: new ToggleWidget(isFolded, foldStart, foldEnd, isHeader),
+                  // Pass isHeader as invisible flag
                   inclusive: true
                 })
               });
@@ -403,31 +411,6 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
               deco: import_view.Decoration.widget({
                 widget: new CopyWidget(i, endLineNo),
                 side: 1
-              })
-            });
-          }
-        }
-        if (text.startsWith(END_TAG)) {
-          const rangeFrom = line.from;
-          const rangeTo = line.from + END_TAG.length;
-          const isOrphan = runningStack === 0;
-          if (!isOrphan) {
-            runningStack--;
-          }
-          let isSelected = false;
-          for (const r of selection.ranges) {
-            if (r.to >= rangeFrom && r.from <= rangeTo) {
-              isSelected = true;
-              break;
-            }
-          }
-          if (!isSelected && !isOrphan) {
-            decos.push({
-              from: rangeFrom,
-              to: rangeTo,
-              deco: import_view.Decoration.replace({
-                widget: new EndTagWidget(rangeFrom, 0),
-                inclusive: true
               })
             });
           }

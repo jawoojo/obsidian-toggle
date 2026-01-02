@@ -30,30 +30,40 @@ const INDENT_STEP = 16.5; // Restored Base Grid (16.5px)
 
 // [PRD 3.1.1] Start Widget (Triangle)
 class ToggleWidget extends WidgetType {
-    constructor(readonly isFolded: boolean, readonly foldStart: number, readonly foldEnd: number) {
+    constructor(
+        readonly isFolded: boolean,
+        readonly foldStart: number,
+        readonly foldEnd: number,
+        readonly invisible: boolean = false // [New] Option to hide triangle
+    ) {
         super();
     }
 
     toDOM(view: EditorView): HTMLElement {
         const span = document.createElement("span");
         span.className = "toggle-widget";
-        span.textContent = this.isFolded ? "▶" : "▼";
-        span.style.cursor = "pointer";
 
-        span.onclick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
+        if (this.invisible) {
+            span.style.display = "none"; // Hide completely
+        } else {
+            span.textContent = this.isFolded ? "▶" : "▼";
+            span.style.cursor = "pointer";
 
-            if (this.isFolded) {
-                view.dispatch({
-                    effects: unfoldEffect.of({ from: this.foldStart, to: this.foldEnd })
-                });
-            } else {
-                view.dispatch({
-                    effects: foldEffect.of({ from: this.foldStart, to: this.foldEnd })
-                });
-            }
-        };
+            span.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (this.isFolded) {
+                    view.dispatch({
+                        effects: unfoldEffect.of({ from: this.foldStart, to: this.foldEnd })
+                    });
+                } else {
+                    view.dispatch({
+                        effects: foldEffect.of({ from: this.foldStart, to: this.foldEnd })
+                    });
+                }
+            };
+        }
         return span;
     }
 
@@ -482,6 +492,11 @@ const togglePlugin = ViewPlugin.fromClass(
                         }
                     }
 
+                    // [New Feature] Header Support: Hide Triangle if it's a Header
+                    // Parse content after |> to find Headers
+                    const contentAfter = trimmedText.slice(START_TAG.length);
+                    const isHeader = /^\s*(#{1,6})\s/.test(contentAfter);
+
                     // Only replace if NOT selected
                     if (!isSelected) {
                         const endLineNo = findMatchingEndLine(doc, i);
@@ -498,7 +513,7 @@ const togglePlugin = ViewPlugin.fromClass(
                                 from: rangeFrom,
                                 to: rangeTo,
                                 deco: Decoration.replace({
-                                    widget: new ToggleWidget(isFolded, foldStart, foldEnd),
+                                    widget: new ToggleWidget(isFolded, foldStart, foldEnd, isHeader), // Pass isHeader as invisible flag
                                     inclusive: true
                                 })
                             });
@@ -556,39 +571,7 @@ const togglePlugin = ViewPlugin.fromClass(
                         });
                     }
                 }
-                if (text.startsWith(END_TAG)) {
-                    const rangeFrom = line.from;
-                    const rangeTo = line.from + END_TAG.length;
 
-                    // Orphan Check
-                    const isOrphan = (runningStack === 0);
-                    if (!isOrphan) {
-                        runningStack--;
-                    }
-
-                    // Reveal on Click/Selection
-                    let isSelected = false;
-                    for (const r of selection.ranges) {
-                        if (r.to >= rangeFrom && r.from <= rangeTo) {
-                            isSelected = true;
-                            break;
-                        }
-                    }
-
-                    // Simple Logic: 
-                    // If Selected OR Orphan -> SHOW RAW TEXT (No Decoration)
-                    // If Matched & Not Selected -> HIDE (Invisible Decoration)
-                    if (!isSelected && !isOrphan) {
-                        decos.push({
-                            from: rangeFrom,
-                            to: rangeTo,
-                            deco: Decoration.replace({
-                                widget: new EndTagWidget(rangeFrom, 0),
-                                inclusive: true
-                            })
-                        });
-                    }
-                }
             }
 
             // Sort decorations by 'from' to satisfy RangeSetBuilder requirement (must be strictly increasing)
