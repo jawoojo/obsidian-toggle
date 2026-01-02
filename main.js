@@ -195,10 +195,15 @@ var notionFoldService = import_language.foldService.of((state, lineStart, lineEn
       return { from: line.to, to: doc.line(endLineNo).to };
     }
   }
-  if (text.startsWith("```")) {
+  const trimmed = text.trimStart();
+  const isBacktick = trimmed.startsWith("```>");
+  const isTilde = trimmed.startsWith("~~~>");
+  if (isBacktick || isTilde) {
+    const endToken = isBacktick ? "```" : "~~~";
     let codeBlockEndLine = -1;
     for (let i = line.number + 1; i <= state.doc.lines; i++) {
-      if (state.doc.line(i).text.trimStart().startsWith("```")) {
+      const nextLineText = state.doc.line(i).text.trimStart();
+      if (nextLineText.startsWith(endToken)) {
         codeBlockEndLine = i;
         break;
       }
@@ -323,7 +328,7 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
           });
         }
         prevLevel = currentLevel;
-        if (trimmedText.startsWith("```")) {
+        if (trimmedText.startsWith("```") || trimmedText.startsWith("~~~")) {
           inCodeBlock = !inCodeBlock;
           continue;
         }

@@ -242,13 +242,23 @@ const notionFoldService = foldService.of((state: EditorState, lineStart: number,
         }
     }
 
-    // Case 3: Code Block Fold (``` ... ```)
-    if (text.startsWith("```")) {
-        // Find matching end logic 
+    // Case 3: Toggle Code Block (```> or ~~~>)
+    // User Requirement: Fold if starts with "```>" or "~~~>"
+    // Ends with standard "```" or "~~~"
+    const trimmed = text.trimStart();
+    const isBacktick = trimmed.startsWith("```>");
+    const isTilde = trimmed.startsWith("~~~>");
+
+    if (isBacktick || isTilde) {
+        const endToken = isBacktick ? "```" : "~~~";
+
         let codeBlockEndLine = -1;
         for (let i = line.number + 1; i <= state.doc.lines; i++) {
-            if (state.doc.line(i).text.trimStart().startsWith("```")) {
-                codeBlockEndLine = i; // Use the end delimiter line
+            const nextLineText = state.doc.line(i).text.trimStart();
+            // Check for strict end token start (typically just ``` or ~~~)
+            // But we must match the delimiter type.
+            if (nextLineText.startsWith(endToken)) {
+                codeBlockEndLine = i;
                 break;
             }
         }
@@ -431,7 +441,7 @@ const togglePlugin = ViewPlugin.fromClass(
                 // [Modified] Code Block Tracking (Guard Only)
                 // Just track state to ignore |> inside code blocks.
                 // Leave visualization/folding to Obsidian native features.
-                if (trimmedText.startsWith("```")) {
+                if (trimmedText.startsWith("```") || trimmedText.startsWith("~~~")) {
                     // Simple toggle assumption for valid markdown (non-nested)
                     inCodeBlock = !inCodeBlock;
                     continue;
