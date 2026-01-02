@@ -201,9 +201,11 @@ var notionFoldService = import_language.foldService.of((state, lineStart, lineEn
     }
   }
   const trimmed = text.trimStart();
-  const isBacktick = trimmed.startsWith("```>");
-  const isTilde = trimmed.startsWith("~~~>");
-  if (isBacktick || isTilde) {
+  const backtickMatch = trimmed.match(/^`{3}.*>$/);
+  const tildeMatch = trimmed.match(/^~{3}.*>$/);
+  if (backtickMatch || tildeMatch) {
+    const isBacktick = !!backtickMatch;
+    const isTilde = !!tildeMatch;
     const endToken = isBacktick ? "```" : "~~~";
     let codeBlockEndLine = -1;
     for (let i = line.number + 1; i <= state.doc.lines; i++) {

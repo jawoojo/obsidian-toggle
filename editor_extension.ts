@@ -252,14 +252,17 @@ const notionFoldService = foldService.of((state: EditorState, lineStart: number,
         }
     }
 
-    // Case 3: Toggle Code Block (```> or ~~~>)
-    // User Requirement: Fold if starts with "```>" or "~~~>"
-    // Ends with standard "```" or "~~~"
+    // Case 3: Toggle Code Block
+    // User Requirement: Support "```>", "```python>", "```python >" (Ends with >)
     const trimmed = text.trimStart();
-    const isBacktick = trimmed.startsWith("```>");
-    const isTilde = trimmed.startsWith("~~~>");
 
-    if (isBacktick || isTilde) {
+    // Regex: Start with 3 backticks/tildes, contain anything, END with >
+    const backtickMatch = trimmed.match(/^`{3}.*>$/);
+    const tildeMatch = trimmed.match(/^~{3}.*>$/);
+
+    if (backtickMatch || tildeMatch) {
+        const isBacktick = !!backtickMatch;
+        const isTilde = !!tildeMatch;
         const endToken = isBacktick ? "```" : "~~~";
 
         let codeBlockEndLine = -1;
