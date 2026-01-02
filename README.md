@@ -1,43 +1,44 @@
-# Toggle (Obsidian Plugin)
+# Obsidian Toggle Plugin
 
-## 개발자 설치 가이드
+A premium, Notion-style toggle plugin for Obsidian. Use custom syntax to create collapsible blocks with enhanced styling.
 
-이 플러그인은 현재 개발 중인 상태이므로 수동으로 빌드하고 설치해야 합니다.
+## Features
 
-### 1단계: 빌드하기 (터미널)
+- **Notion-Style Toggles**: Use `|>` and `<|` to create toggle blocks.
+- **Nested Toggles**: endless nesting with visually distinct levels (up to 8 levels).
+- **Header Support**: `|> # Header` syntax supported. Triangle hides automatically for headers.
+- **Code Block Toggles**: Support for ` ```> ` or ` ```python > ` syntax.
+- **Reading Mode Support**: Fully functional and styled in Reading View.
+- **Command Palette**: Insert toggles easily via commands.
 
-터미널을 열고 이 프로젝트 폴더(`toggle`)에서 다음 명령어를 실행하세요.
+## Usage
 
-```bash
-# 1. 의존성 설치 (권한 오류가 나면 앞에 sudo를 붙이세요)
-npm install
-
-# 2. 플러그인 파일 빌드 (main.js가 생성됩니다)
-npm run build
+### Basic Toggle
+```
+|> Title
+Content...
+<|
 ```
 
-### 2단계: 옵시디언에 설치하기
+### Header Toggle
+```
+|> # My Header
+Content...
+<|
+```
 
-1. **옵시디언 볼트 폴더 열기**:
-    - 파인더(Finder)에서 옵시디언 볼트(Vault)가 저장된 폴더로 이동합니다.
-2. **플러그인 폴더 만들기**:
-    - 숨김 폴더인 `.obsidian` 폴더로 들어가세요. (파인더에서 `Cmd + Shift + .` 키를 누르면 숨김 파일이 보입니다)
-    - `.obsidian/plugins/` 경로로 들어갑니다.
-    - 여기에 `obsidian-toggle` 이라는 이름으로 새 폴더를 만듭니다.
-3. **파일 복사**:
-    - 방금 빌드한 프로젝트 폴더에서 다음 3개 파일을 복사해서 위에서 만든 폴더에 붙여넣습니다.
-        - `main.js`
-        - `manifest.json`
-        - `styles.css`
+### Code Block Toggle
+```text
+\`\`\`> 
+console.log("Toggleable Code");
+\`\`\`
+```
 
-### 3단계: 활성화하기
+## Installation
 
-1. 옵시디언을 켭니다.
-2. '설정(Settings)' > '커뮤니티 플러그인(Community Plugins)'으로 이동합니다.
-3. '제한 모드(Restricted mode)'가 켜져 있다면 끕니다.
-4. 아래 목록에서 **Toggle** 플러그인을 찾아 활성화 스위치를 켭니다.
+1. Search for "Toggle" in Obsidian Community Plugins (Coming Soon).
+2. Or install manually by copying `main.js`, `manifest.json`, `styles.css` to your vault's `.obsidian/plugins/obsidian-toggle/` folder.
 
-## 사용법
+## License
 
-- 문장 맨 앞에 `|> ` (파이프+꺽쇠)를 입력하면 토글이 생성됩니다.
-- `Space`를 누르면 자동으로 닫는 태그가 생성됩니다.
+MIT
