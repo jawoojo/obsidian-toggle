@@ -533,8 +533,8 @@ async function readingModeProcessor(el, ctx) {
       const contentAfter = trimmedSource.slice(START_TAG2.length);
       const headerMatch = contentAfter.match(/^\s*(#{1,6})\s/);
       const isHeader = !!headerMatch;
-      const walker2 = document.createTreeWalker(child, NodeFilter.SHOW_TEXT);
-      const firstTextNode = walker2.nextNode();
+      const walker = document.createTreeWalker(child, NodeFilter.SHOW_TEXT);
+      const firstTextNode = walker.nextNode();
       if (firstTextNode && firstTextNode.nodeValue) {
         let processed = false;
         if (firstTextNode.nodeValue.trimStart().startsWith("|>")) {
@@ -593,11 +593,13 @@ async function readingModeProcessor(el, ctx) {
         child.style.position = "relative";
       }
     }
-    const walker = document.createTreeWalker(child, NodeFilter.SHOW_TEXT);
-    let textNode;
-    while (textNode = walker.nextNode()) {
-      if (textNode.nodeValue && textNode.nodeValue.includes(END_TAG2)) {
-        textNode.nodeValue = textNode.nodeValue.replace(/(^|\n)\s*<\|/g, "$1");
+    if (child.textContent && child.textContent.includes(END_TAG2)) {
+      const walker = document.createTreeWalker(child, NodeFilter.SHOW_TEXT);
+      let textNode;
+      while (textNode = walker.nextNode()) {
+        if (textNode.nodeValue && textNode.nodeValue.includes(END_TAG2)) {
+          textNode.nodeValue = textNode.nodeValue.replace(/(^|\n)\s*<\|/g, "$1");
+        }
       }
     }
     currentLine++;

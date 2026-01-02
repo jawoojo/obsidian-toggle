@@ -230,16 +230,19 @@ export async function readingModeProcessor(el: HTMLElement, ctx: MarkdownPostPro
             }
         }
 
-        // [Modified] Aggressive End Tag Cleanup
-        // Scan text nodes for "<|" independently of line mapping
-        // This handles cases where Obsidian merges lines (e.g. Content\n<|) into one element
-        const walker = document.createTreeWalker(child, NodeFilter.SHOW_TEXT);
-        let textNode: Node | null;
-        while (textNode = walker.nextNode()) {
-            if (textNode.nodeValue && textNode.nodeValue.includes(END_TAG)) {
-                // Replace "<|" and preceding newline/spaces if it matches the End Tag pattern
-                // Regex: (Start of node OR Newline) + Optional Whitespace + <|
-                textNode.nodeValue = textNode.nodeValue.replace(/(^|\n)\s*<\|/g, "$1");
+        // [Optimization] Guard Clause: Skip if End Tag is not present at all using fast native property
+        if (child.textContent && child.textContent.includes(END_TAG)) {
+            // [Modified] Aggressive End Tag Cleanup
+            // Scan text nodes for "<|" independently of line mapping
+            // This handles cases where Obsidian merges lines (e.g. Content\n<|) into one element
+            const walker = document.createTreeWalker(child, NodeFilter.SHOW_TEXT);
+            let textNode: Node | null;
+            while (textNode = walker.nextNode()) {
+                if (textNode.nodeValue && textNode.nodeValue.includes(END_TAG)) {
+                    // Replace "<|" and preceding newline/spaces if it matches the End Tag pattern
+                    // Regex: (Start of node OR Newline) + Optional Whitespace + <|
+                    textNode.nodeValue = textNode.nodeValue.replace(/(^|\n)\s*<\|/g, "$1");
+                }
             }
         }
 
