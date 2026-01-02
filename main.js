@@ -644,6 +644,28 @@ ${selection}
         }
       }
     });
+    this.addCommand({
+      id: "insert-code-toggle",
+      name: "Insert Code Block Toggle",
+      editorCallback: (editor) => {
+        const selection = editor.getSelection();
+        if (selection) {
+          editor.replaceSelection(`\`\`\`> 
+${selection}
+\`\`\``);
+        } else {
+          const start = "```> ";
+          const body = "\n\n";
+          const end = "```";
+          const cursorBefore = editor.getCursor();
+          editor.replaceSelection(start + body + end);
+          editor.setCursor({
+            line: cursorBefore.line,
+            ch: cursorBefore.ch + 5
+          });
+        }
+      }
+    });
   }
   onunload() {
     console.log("Unloading Toggle Plugin");

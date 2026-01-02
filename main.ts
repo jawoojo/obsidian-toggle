@@ -17,8 +17,6 @@ export default class TogglePlugin extends Plugin {
                 if (selection) {
                     // Wrap existing selection
                     editor.replaceSelection(`|> \n${selection}\n<|`);
-                    // Optional: Select the wrapped content? Or leave cursor at end.
-                    // Let's leave cursor at end for now.
                 } else {
                     // Insert empty toggle block
                     const start = "|> ";
@@ -29,10 +27,34 @@ export default class TogglePlugin extends Plugin {
                     editor.replaceSelection(start + body + end);
 
                     // Set cursor to: Start Line, Column 3 (After "|> ")
-                    // cursorBefore.line is where insertion started.
                     editor.setCursor({
                         line: cursorBefore.line,
                         ch: cursorBefore.ch + 3
+                    });
+                }
+            }
+        });
+
+        this.addCommand({
+            id: 'insert-code-toggle',
+            name: 'Insert Code Block Toggle',
+            editorCallback: (editor) => {
+                const selection = editor.getSelection();
+
+                if (selection) {
+                    editor.replaceSelection(`\`\`\`> \n${selection}\n\`\`\``);
+                } else {
+                    const start = "```> ";
+                    const body = "\n\n";
+                    const end = "```";
+
+                    const cursorBefore = editor.getCursor();
+                    editor.replaceSelection(start + body + end);
+
+                    // Set cursor to: Start Line, Col 5 (After "```> ")
+                    editor.setCursor({
+                        line: cursorBefore.line,
+                        ch: cursorBefore.ch + 5
                     });
                 }
             }
