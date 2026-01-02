@@ -27,7 +27,7 @@ __export(main_exports, {
   default: () => TogglePlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian2 = require("obsidian");
+var import_obsidian3 = require("obsidian");
 
 // editor_extension.ts
 var import_view = require("@codemirror/view");
@@ -461,11 +461,167 @@ var toggleExtension = [
   autoCloseKeymap
 ];
 
+// reading_mode_processor.ts
+var import_obsidian2 = require("obsidian");
+var START_TAG2 = "|> ";
+var END_TAG2 = "<|";
+function parseLevels(text) {
+  const lines = text.split(/\r\n|\r|\n/);
+  const levels = new Int32Array(lines.length).fill(0);
+  const rounds = new Array(lines.length).fill("");
+  const openStack = [];
+  const validRanges = [];
+  for (let i = 0; i < lines.length; i++) {
+    const lineText = lines[i];
+    if (lineText.trimStart().startsWith(START_TAG2)) {
+      openStack.push(i);
+    } else if (lineText.trimStart().startsWith(END_TAG2)) {
+      if (openStack.length > 0) {
+        const start = openStack.pop();
+        validRanges.push({ start, end: i });
+      }
+    }
+  }
+  const diff = new Int32Array(lines.length + 1);
+  for (const range of validRanges) {
+    if (range.end >= range.start) {
+      diff[range.start]++;
+      diff[range.end + 1]--;
+      rounds[range.start] = "top";
+      rounds[range.end] = "bot";
+    }
+  }
+  let currentLevel = 0;
+  for (let i = 0; i < lines.length; i++) {
+    currentLevel += diff[i];
+    levels[i] = currentLevel;
+  }
+  return { levels: Array.from(levels), rounds };
+}
+async function readingModeProcessor(el, ctx) {
+  const sectionInfo = ctx.getSectionInfo(el);
+  if (!sectionInfo)
+    return;
+  const file = app.vault.getAbstractFileByPath(ctx.sourcePath);
+  if (!(file instanceof import_obsidian2.TFile))
+    return;
+  const fileText = await app.vault.cachedRead(file);
+  const { levels, rounds } = parseLevels(fileText);
+  const lines = fileText.split(/\r\n|\r|\n/);
+  const startLine = sectionInfo.lineStart;
+  const endLine = sectionInfo.lineEnd;
+  let currentLine = startLine;
+  const children = Array.from(el.children);
+  for (const child of children) {
+    if (currentLine > endLine)
+      break;
+    const lineLevel = levels[currentLine];
+    const roundType = rounds[currentLine];
+    const lineText = fileText.split(/\r\n|\r|\n/)[currentLine];
+    if (lineLevel > 0) {
+      const safeLevel = Math.min(lineLevel, 8);
+      child.classList.add("toggle-bg", `toggle-bg-level-${safeLevel}`);
+      if (roundType === "top")
+        child.classList.add("toggle-round-top");
+      if (roundType === "bot")
+        child.classList.add("toggle-round-bot");
+    }
+    const trimmedSource = lineText.trimStart();
+    if (trimmedSource.startsWith(START_TAG2)) {
+      const contentAfter = trimmedSource.slice(START_TAG2.length);
+      const headerMatch = contentAfter.match(/^\s*(#{1,6})\s/);
+      const isHeader = !!headerMatch;
+      const walker = document.createTreeWalker(child, NodeFilter.SHOW_TEXT);
+      const firstTextNode = walker.nextNode();
+      if (firstTextNode && firstTextNode.nodeValue) {
+        let processed = false;
+        if (firstTextNode.nodeValue.trimStart().startsWith("|>")) {
+          const originalVal = firstTextNode.nodeValue;
+          const triggerIdx = originalVal.indexOf("|>");
+          if (triggerIdx !== -1) {
+            const afterText = originalVal.substring(triggerIdx + 2);
+            const beforeText = originalVal.substring(0, triggerIdx);
+            firstTextNode.nodeValue = beforeText + (isHeader ? "" : "");
+            if (!isHeader) {
+              const triangle = document.createElement("span");
+              triangle.className = "toggle-widget";
+              triangle.textContent = "\u25BC";
+              triangle.style.marginRight = "5px";
+              if (firstTextNode.parentNode) {
+                firstTextNode.parentNode.insertBefore(triangle, firstTextNode.nextSibling);
+                const textNodeAfter = document.createTextNode(afterText);
+                firstTextNode.parentNode.insertBefore(textNodeAfter, triangle.nextSibling);
+              }
+            } else {
+              if (headerMatch) {
+                const cleanTitle = afterText.replace(/^\s*#{1,6}\s/, "");
+                if (firstTextNode.parentNode) {
+                  const textNodeAfter = document.createTextNode(cleanTitle);
+                  firstTextNode.parentNode.insertBefore(textNodeAfter, firstTextNode.nextSibling);
+                }
+                const level = headerMatch[1].length;
+                child.classList.add(`cm-header`, `cm-header-${level}`);
+                child.style.fontWeight = "bold";
+                child.style.fontSize = `var(--h${level}-size)`;
+                child.style.color = `var(--h${level}-color)`;
+              } else {
+                if (firstTextNode.parentNode) {
+                  const textNodeAfter = document.createTextNode(afterText);
+                  firstTextNode.parentNode.insertBefore(textNodeAfter, firstTextNode.nextSibling);
+                }
+              }
+            }
+          }
+        }
+      }
+      const endLineNo = findMatchingEndLine2(levels, lines, currentLine);
+      if (endLineNo !== -1) {
+        const copyBtn = document.createElement("span");
+        copyBtn.className = "toggle-copy-btn";
+        const icon = (0, import_obsidian2.getIcon)("copy");
+        if (icon)
+          copyBtn.appendChild(icon);
+        copyBtn.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const contentLines = lines.slice(currentLine + 1, endLineNo);
+          navigator.clipboard.writeText(contentLines.join("\n"));
+        };
+        child.appendChild(copyBtn);
+        child.style.position = "relative";
+      }
+    }
+    if (lineText.trimStart().startsWith(END_TAG2)) {
+      const walker = document.createTreeWalker(child, NodeFilter.SHOW_TEXT);
+      const firstTextNode = walker.nextNode();
+      if (firstTextNode && firstTextNode.nodeValue && firstTextNode.nodeValue.trimStart().startsWith(END_TAG2)) {
+        firstTextNode.nodeValue = firstTextNode.nodeValue.replace(END_TAG2, "");
+      }
+    }
+    currentLine++;
+  }
+}
+function findMatchingEndLine2(levels, lines, startLine) {
+  let stack = 1;
+  for (let i = startLine + 1; i < lines.length; i++) {
+    const txt = lines[i].trimStart();
+    if (txt.startsWith(START_TAG2))
+      stack++;
+    else if (txt.startsWith(END_TAG2)) {
+      stack--;
+      if (stack === 0)
+        return i;
+    }
+  }
+  return -1;
+}
+
 // main.ts
-var TogglePlugin = class extends import_obsidian2.Plugin {
+var TogglePlugin = class extends import_obsidian3.Plugin {
   async onload() {
     console.log("Loading Toggle Plugin V3.1 (Nested Toggles + Native)");
     this.registerEditorExtension(toggleExtension);
+    this.registerMarkdownPostProcessor((el, ctx) => readingModeProcessor(el, ctx));
   }
   onunload() {
     console.log("Unloading Toggle Plugin");
