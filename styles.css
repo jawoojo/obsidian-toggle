@@ -133,13 +133,7 @@
     cursor: pointer;
 }
 
-
-/* [PRD 3.1.3] Hide Native Gutter Arrow */
-.toggle-hide-native-fold .cm-fold-indicator {
-    display: none !important;
-}
-
-/* [New] Copy Button Style */
+/* [NEW] Copy Button Style */
 .toggle-copy-btn {
     position: absolute;
     right: 8px;

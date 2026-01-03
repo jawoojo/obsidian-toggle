@@ -34,7 +34,6 @@ var import_view = require("@codemirror/view");
 var import_state = require("@codemirror/state");
 var import_language = require("@codemirror/language");
 var import_obsidian = require("obsidian");
-var import_view2 = require("@codemirror/view");
 var START_TAG = "|> ";
 var END_TAG = "<|";
 var ToggleWidget = class extends import_view.WidgetType {
@@ -125,7 +124,9 @@ var EndTagWidget = class extends import_view.WidgetType {
     span.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
-      view.dispatch({ selection: { anchor: this.pos } });
+      view.dispatch({
+        selection: { anchor: this.pos }
+      });
       view.focus();
     };
     return span;
@@ -160,7 +161,11 @@ var notionFoldService = import_language.foldService.of((state, lineStart, lineEn
   const line = state.doc.lineAt(lineStart);
   const text = line.text;
   if (text.startsWith(START_TAG)) {
-    return null;
+    const endLineNo = findMatchingEndLine(state.doc, line.number);
+    if (endLineNo !== -1) {
+      const nextLine = state.doc.line(endLineNo);
+      return { from: line.to, to: nextLine.to };
+    }
   }
   if (text.trimStart().startsWith("#")) {
     const match = text.match(/^(#+)\s/);
@@ -199,7 +204,21 @@ var notionFoldService = import_language.foldService.of((state, lineStart, lineEn
   const backtickMatch = trimmed.match(/^`{3}.*>$/);
   const tildeMatch = trimmed.match(/^~{3}.*>$/);
   if (backtickMatch || tildeMatch) {
-    return null;
+    const isBacktick = !!backtickMatch;
+    const isTilde = !!tildeMatch;
+    const endToken = isBacktick ? "```" : "~~~";
+    let codeBlockEndLine = -1;
+    for (let i = line.number + 1; i <= state.doc.lines; i++) {
+      const nextLineText = state.doc.line(i).text.trimStart();
+      if (nextLineText.startsWith(endToken)) {
+        codeBlockEndLine = i;
+        break;
+      }
+    }
+    if (codeBlockEndLine !== -1) {
+      const endLine = state.doc.line(codeBlockEndLine);
+      return { from: line.to, to: endLine.to };
+    }
   }
   return null;
 });
@@ -259,6 +278,7 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
         }
       }
       let currentLevel = 0;
+      let prevLevel = 0;
       let runningStack = 0;
       let inCodeBlock = false;
       for (let i = 1; i <= lineCount; i++) {
@@ -314,6 +334,7 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
             })
           });
         }
+        prevLevel = currentLevel;
         if (trimmedText.startsWith("```") || trimmedText.startsWith("~~~")) {
           const isCodeBlockToggle = /^(```|~~~).*>\s*$/.test(trimmedText);
           if (!inCodeBlock && isCodeBlockToggle) {
@@ -341,6 +362,7 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
                 to: rangeFrom,
                 deco: import_view.Decoration.widget({
                   widget: new ToggleWidget(isFolded, foldStart, foldEnd, false),
+                  // visible=true
                   side: -1
                 })
               });
@@ -380,6 +402,7 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
                 to: rangeTo,
                 deco: import_view.Decoration.replace({
                   widget: new ToggleWidget(isFolded, foldStart, foldEnd, isHeader),
+                  // Pass isHeader as invisible flag
                   inclusive: true
                 })
               });
@@ -417,6 +440,7 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
           if (endLineNo !== -1) {
             decos.push({
               from: line.to,
+              // Append to end of line
               to: line.to,
               deco: import_view.Decoration.widget({
                 widget: new CopyWidget(i, endLineNo),
@@ -465,40 +489,10 @@ var autoCloseKeymap = import_state.Prec.highest(import_view.keymap.of([{
     return false;
   }
 }]));
-var hideFoldMarker = new class extends import_view2.GutterMarker {
-  constructor() {
-    super(...arguments);
-    this.elementClass = "toggle-hide-native-fold";
-  }
-}();
-var hideNativeFoldGutter = import_view2.gutterLineClass.compute(["doc"], (state) => {
-  const builder = new import_state.RangeSetBuilder();
-  const doc = state.doc;
-  for (let i = 1; i <= doc.lines; i++) {
-    const line = doc.line(i);
-    const text = line.text.trimStart();
-    if (text.startsWith(START_TAG)) {
-      const contentAfter = text.slice(START_TAG.length);
-      const isHeader = /^\s*(#{1,6})\s/.test(contentAfter);
-      if (!isHeader) {
-        builder.add(line.from, line.from, hideFoldMarker);
-      }
-    } else if ((text.startsWith("```") || text.startsWith("~~~")) && /^(```|~~~).*>\s*$/.test(text)) {
-      builder.add(line.from, line.from, hideFoldMarker);
-    }
-  }
-  return builder.finish();
-});
 var toggleExtension = [
   notionFoldService,
   togglePlugin,
-  autoCloseKeymap,
-  hideNativeFoldGutter,
-  import_view.EditorView.baseTheme({
-    ".cm-gutterElement .cm-fold-indicator": {
-      // Default (visible)
-    }
-  })
+  autoCloseKeymap
 ];
 
 // reading_mode_processor.ts
