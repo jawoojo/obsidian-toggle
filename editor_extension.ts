@@ -183,12 +183,13 @@ const notionFoldService = foldService.of((state: EditorState, lineStart: number,
     const text = line.text;
 
     // Case 1: Toggle Fold (|> ...)
+    // Case 1: Toggle Fold (|> ...)
     if (text.startsWith(START_TAG)) {
-        const endLineNo = findMatchingEndLine(state.doc, line.number);
-        if (endLineNo !== -1) {
-            const nextLine = state.doc.line(endLineNo);
-            return { from: line.to, to: nextLine.to };
-        }
+        // [PRD 3.1.3] Hide Native Gutter Arrow
+        // Since we have a custom Triangle Widget, we disable the native fold service detection here.
+        // This prevents the duplicate arrow in the gutter.
+        // Folding is still possible via the ToggleWidget's click handler which dispatches foldEffect directly.
+        return null;
     }
 
     // Case 2: Scoped Header Fold (## ... inside |>)
@@ -261,25 +262,9 @@ const notionFoldService = foldService.of((state: EditorState, lineStart: number,
     const tildeMatch = trimmed.match(/^~{3}.*>$/);
 
     if (backtickMatch || tildeMatch) {
-        const isBacktick = !!backtickMatch;
-        const isTilde = !!tildeMatch;
-        const endToken = isBacktick ? "```" : "~~~";
-
-        let codeBlockEndLine = -1;
-        for (let i = line.number + 1; i <= state.doc.lines; i++) {
-            const nextLineText = state.doc.line(i).text.trimStart();
-            // Check for strict end token start (typically just ``` or ~~~)
-            // But we must match the delimiter type.
-            if (nextLineText.startsWith(endToken)) {
-                codeBlockEndLine = i;
-                break;
-            }
-        }
-
-        if (codeBlockEndLine !== -1) {
-            const endLine = state.doc.line(codeBlockEndLine);
-            return { from: line.to, to: endLine.to };
-        }
+        // [PRD 3.1.3] Hide Native Gutter Arrow for Code Block Toggles
+        // Custom Widget handles it.
+        return null;
     }
 
     return null;
@@ -668,8 +653,47 @@ const autoCloseKeymap = Prec.highest(keymap.of([{
     }
 }]));
 
+// 4. Hide Native Gutter Arrow (Using gutterLineClass)
+// [PRD 3.1.3] Hide Fold Indicator for Toggles
+import { gutterLineClass, GutterMarker } from "@codemirror/view";
+
+const hideFoldMarker = new class extends GutterMarker {
+    elementClass = "toggle-hide-native-fold";
+}
+
+const hideNativeFoldGutter = gutterLineClass.compute(["doc"], (state: EditorState) => {
+    const builder = new RangeSetBuilder<GutterMarker>();
+    const doc = state.doc;
+
+    for (let i = 1; i <= doc.lines; i++) {
+        const line = doc.line(i);
+        const text = line.text.trimStart();
+
+        // 1. Basic Toggle
+        if (text.startsWith(START_TAG)) {
+            // Check if it's a header
+            const contentAfter = text.slice(START_TAG.length);
+            const isHeader = /^\s*(#{1,6})\s/.test(contentAfter);
+            if (!isHeader) {
+                builder.add(line.from, line.from, hideFoldMarker);
+            }
+        }
+        // 2. Code Block Toggle
+        else if ((text.startsWith("```") || text.startsWith("~~~")) && /^(```|~~~).*>\s*$/.test(text)) {
+            builder.add(line.from, line.from, hideFoldMarker);
+        }
+    }
+    return builder.finish();
+});
+
 export const toggleExtension: Extension = [
     notionFoldService,
     togglePlugin,
-    autoCloseKeymap
+    autoCloseKeymap,
+    hideNativeFoldGutter,
+    EditorView.baseTheme({
+        ".cm-gutterElement .cm-fold-indicator": {
+            // Default (visible)
+        }
+    })
 ];

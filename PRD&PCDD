@@ -61,6 +61,10 @@
 ### 3.1. 에디터 엔진 활용
 * **[3.1.1]** CodeMirror 6의 `ViewPlugin`과 `Decoration.widget`, `Decoration.replace`를 적극 활용한다.
 * **[3.1.2]** **친환경 구현:** 무거운 DOM 조작보다는 CodeMirror의 Native Folding 기능(`foldService`)과 연동하여 안정성을 확보한다.
+* **[3.1.3]** **Gutter Arrow Control:** 
+    *   기본 토글(`|>`)과 코드 블록 토글(` ```> `)은 **자체 위젯(삼각형)**을 사용하므로, 중복을 피하기 위해 **Native Gutter Arrow(접기 화살표)**를 표시하지 않는다.
+    *   `notionFoldService`에서 제외하여 Gutter Arrow 생성을 억제하되, 자체 위젯 클릭 시에는 `foldEffect`를 직접 호출하여 접기 기능을 유지한다.
+    *   단, **헤더 토글(제목)**은 자체 위젯을 숨기고 Native Arrow를 사용하므로, `foldService`를 유지한다.
 
 ### 3.2. 성능 최적화
 * **[3.2.1]** **Event-Driven Update:** 마우스 커서 감지 로직 등은 `update.selectionSet`이나 `selectionTouchesTag` 같은 조건을 통해 필요한 순간에만 렌더링을 갱신하여 리소스를 절약한다.

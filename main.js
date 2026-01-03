@@ -161,11 +161,7 @@ var notionFoldService = import_language.foldService.of((state, lineStart, lineEn
   const line = state.doc.lineAt(lineStart);
   const text = line.text;
   if (text.startsWith(START_TAG)) {
-    const endLineNo = findMatchingEndLine(state.doc, line.number);
-    if (endLineNo !== -1) {
-      const nextLine = state.doc.line(endLineNo);
-      return { from: line.to, to: nextLine.to };
-    }
+    return null;
   }
   if (text.trimStart().startsWith("#")) {
     const match = text.match(/^(#+)\s/);
@@ -204,21 +200,7 @@ var notionFoldService = import_language.foldService.of((state, lineStart, lineEn
   const backtickMatch = trimmed.match(/^`{3}.*>$/);
   const tildeMatch = trimmed.match(/^~{3}.*>$/);
   if (backtickMatch || tildeMatch) {
-    const isBacktick = !!backtickMatch;
-    const isTilde = !!tildeMatch;
-    const endToken = isBacktick ? "```" : "~~~";
-    let codeBlockEndLine = -1;
-    for (let i = line.number + 1; i <= state.doc.lines; i++) {
-      const nextLineText = state.doc.line(i).text.trimStart();
-      if (nextLineText.startsWith(endToken)) {
-        codeBlockEndLine = i;
-        break;
-      }
-    }
-    if (codeBlockEndLine !== -1) {
-      const endLine = state.doc.line(codeBlockEndLine);
-      return { from: line.to, to: endLine.to };
-    }
+    return null;
   }
   return null;
 });
