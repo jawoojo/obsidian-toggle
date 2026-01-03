@@ -454,8 +454,50 @@ const togglePlugin = ViewPlugin.fromClass(
                 // [Modified] Code Block Tracking (Guard Only)
                 // Just track state to ignore |> inside code blocks.
                 // Leave visualization/folding to Obsidian native features.
+                // [Modified] Code Block Tracking & Toggle Widget
                 if (trimmedText.startsWith("```") || trimmedText.startsWith("~~~")) {
-                    // Simple toggle assumption for valid markdown (non-nested)
+                    const isCodeBlockToggle = /^(```|~~~).*>\s*$/.test(trimmedText);
+
+                    if (!inCodeBlock && isCodeBlockToggle) {
+                        // [New Feature] Render Triangle for Code Block Toggle
+                        const indentLen = text.length - trimmedText.length;
+                        const rangeFrom = line.from + indentLen;
+
+                        // Find Key: We need to find matching END fence to enable folding
+                        // Re-using logic similar to foldService
+                        const endToken = trimmedText.startsWith("```") ? "```" : "~~~";
+                        let codeBlockEndLine = -1;
+
+                        // Search forward for closing fence
+                        for (let k = i + 1; k <= lineCount; k++) {
+                            const nextLineText = doc.line(k).text.trimStart();
+                            if (nextLineText.startsWith(endToken)) {
+                                codeBlockEndLine = k;
+                                break;
+                            }
+                        }
+
+                        if (codeBlockEndLine !== -1) {
+                            const foldStart = line.to;
+                            const foldEnd = doc.line(codeBlockEndLine).to;
+
+                            let isFolded = false;
+                            ranges.between(foldStart, foldEnd, (from, to) => {
+                                if (from === foldStart && to === foldEnd) isFolded = true;
+                            });
+
+                            // Inject Triangle Widget at START of line
+                            decos.push({
+                                from: rangeFrom,
+                                to: rangeFrom,
+                                deco: Decoration.widget({
+                                    widget: new ToggleWidget(isFolded, foldStart, foldEnd, false), // visible=true
+                                    side: -1
+                                })
+                            });
+                        }
+                    }
+
                     inCodeBlock = !inCodeBlock;
                     continue;
                 }

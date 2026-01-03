@@ -336,6 +336,38 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
         }
         prevLevel = currentLevel;
         if (trimmedText.startsWith("```") || trimmedText.startsWith("~~~")) {
+          const isCodeBlockToggle = /^(```|~~~).*>\s*$/.test(trimmedText);
+          if (!inCodeBlock && isCodeBlockToggle) {
+            const indentLen = text.length - trimmedText.length;
+            const rangeFrom = line.from + indentLen;
+            const endToken = trimmedText.startsWith("```") ? "```" : "~~~";
+            let codeBlockEndLine = -1;
+            for (let k = i + 1; k <= lineCount; k++) {
+              const nextLineText = doc.line(k).text.trimStart();
+              if (nextLineText.startsWith(endToken)) {
+                codeBlockEndLine = k;
+                break;
+              }
+            }
+            if (codeBlockEndLine !== -1) {
+              const foldStart = line.to;
+              const foldEnd = doc.line(codeBlockEndLine).to;
+              let isFolded = false;
+              ranges.between(foldStart, foldEnd, (from, to) => {
+                if (from === foldStart && to === foldEnd)
+                  isFolded = true;
+              });
+              decos.push({
+                from: rangeFrom,
+                to: rangeFrom,
+                deco: import_view.Decoration.widget({
+                  widget: new ToggleWidget(isFolded, foldStart, foldEnd, false),
+                  // visible=true
+                  side: -1
+                })
+              });
+            }
+          }
           inCodeBlock = !inCodeBlock;
           continue;
         }

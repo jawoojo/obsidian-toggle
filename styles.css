@@ -1,5 +1,8 @@
 /* [PRD 3.2.3] Toggle Background Highlight */
 .toggle-bg {
+    /* [PRD 2.4.1] Variable for customization */
+    --toggle-opacity-step: 0.03;
+
     border-radius: 0;
     position: relative;
     /* Anchor for absolute positioned copy button */
@@ -26,70 +29,70 @@
 
 /* Nested Levels - Light Mode (Darken 5% per level) */
 .theme-light .toggle-bg-level-1 {
-    background-color: rgba(0, 0, 0, 0.05);
+    background-color: rgba(0, 0, 0, calc(var(--toggle-opacity-step) * 1));
 }
 
 .theme-light .toggle-bg-level-2 {
-    background-color: rgba(0, 0, 0, 0.10);
+    background-color: rgba(0, 0, 0, calc(var(--toggle-opacity-step) * 2));
 }
 
 .theme-light .toggle-bg-level-3 {
-    background-color: rgba(0, 0, 0, 0.15);
+    background-color: rgba(0, 0, 0, calc(var(--toggle-opacity-step) * 3));
 }
 
 .theme-light .toggle-bg-level-4 {
-    background-color: rgba(0, 0, 0, 0.20);
+    background-color: rgba(0, 0, 0, calc(var(--toggle-opacity-step) * 4));
 }
 
 .theme-light .toggle-bg-level-5 {
-    background-color: rgba(0, 0, 0, 0.25);
+    background-color: rgba(0, 0, 0, calc(var(--toggle-opacity-step) * 5));
 }
 
 /* Reversing Opacity from Level 6 */
 .theme-light .toggle-bg-level-6 {
-    background-color: rgba(0, 0, 0, 0.20);
+    background-color: rgba(0, 0, 0, calc(var(--toggle-opacity-step) * 4));
 }
 
 .theme-light .toggle-bg-level-7 {
-    background-color: rgba(0, 0, 0, 0.15);
+    background-color: rgba(0, 0, 0, calc(var(--toggle-opacity-step) * 3));
 }
 
 .theme-light .toggle-bg-level-8 {
-    background-color: rgba(0, 0, 0, 0.10);
+    background-color: rgba(0, 0, 0, calc(var(--toggle-opacity-step) * 2));
 }
 
 /* Nested Levels - Dark Mode (Lighten 5% per level, then reverse) */
 .theme-dark .toggle-bg-level-1 {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: rgba(255, 255, 255, calc(var(--toggle-opacity-step) * 1));
 }
 
 .theme-dark .toggle-bg-level-2 {
-    background-color: rgba(255, 255, 255, 0.10);
+    background-color: rgba(255, 255, 255, calc(var(--toggle-opacity-step) * 2));
 }
 
 .theme-dark .toggle-bg-level-3 {
-    background-color: rgba(255, 255, 255, 0.15);
+    background-color: rgba(255, 255, 255, calc(var(--toggle-opacity-step) * 3));
 }
 
 .theme-dark .toggle-bg-level-4 {
-    background-color: rgba(255, 255, 255, 0.20);
+    background-color: rgba(255, 255, 255, calc(var(--toggle-opacity-step) * 4));
 }
 
 .theme-dark .toggle-bg-level-5 {
-    background-color: rgba(255, 255, 255, 0.25);
+    background-color: rgba(255, 255, 255, calc(var(--toggle-opacity-step) * 5));
 }
 
 /* Reversing Opacity */
 .theme-dark .toggle-bg-level-6 {
-    background-color: rgba(255, 255, 255, 0.20);
+    background-color: rgba(255, 255, 255, calc(var(--toggle-opacity-step) * 4));
 }
 
 .theme-dark .toggle-bg-level-7 {
-    background-color: rgba(255, 255, 255, 0.15);
+    background-color: rgba(255, 255, 255, calc(var(--toggle-opacity-step) * 3));
 }
 
 .theme-dark .toggle-bg-level-8 {
-    background-color: rgba(255, 255, 255, 0.10);
+    background-color: rgba(255, 255, 255, calc(var(--toggle-opacity-step) * 2));
 }
 
 /* [PRD 3.2.2] Notion-like Triangle Style */
