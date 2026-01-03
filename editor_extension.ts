@@ -23,14 +23,15 @@ import {
     foldedRanges
 } from "@codemirror/language";
 import { getIcon } from "obsidian";
-import { gutterLineClass, GutterMarker } from "@codemirror/view"; // Moved import to top
+import { gutterLineClass, GutterMarker } from "@codemirror/view";
 
 // Constants
 const START_TAG = "|> ";
 const END_TAG = "<|";
 const INDENT_STEP = 16.5;
 
-// [PRD 3.1.1] Start Widget (Triangle)
+// [PRD 2.2.1] Start Widget (Triangle)
+// -> Transforms '|> ' text into a clickable Notion-style triangle (▶/▼).
 class ToggleWidget extends WidgetType {
     constructor(
         readonly isFolded: boolean,
@@ -51,6 +52,8 @@ class ToggleWidget extends WidgetType {
             span.textContent = this.isFolded ? "▶" : "▼";
             span.style.cursor = "pointer";
 
+            // [PRD 3.1.2] 친환경 구현 (Native Folding 연동)
+            // -> 위젯 클릭 시 CM6의 fold/unfold effect를 직접 디스패치하여 동작.
             span.onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -72,7 +75,8 @@ class ToggleWidget extends WidgetType {
     ignoreEvent(): boolean { return true; }
 }
 
-// [PRD Example] Copy Widget (Top-Right)
+// [PRD 2.5.4] Copy Widget (Reading Mode & Editor Support)
+// -> Provides a copy button for toggle content, similar to reading mode.
 class CopyWidget extends WidgetType {
     constructor(readonly startLineNo: number, readonly endLineNo: number) {
         super();
@@ -111,7 +115,8 @@ class CopyWidget extends WidgetType {
     ignoreEvent(): boolean { return true; }
 }
 
-// [Updated] End Widget
+// [PRD 2.2.2] End Widget (Visual Line)
+// -> Hides '<|' text and renders a visual cue or interacts on click.
 class EndTagWidget extends WidgetType {
     constructor(readonly pos: number, readonly indentPx: number, readonly isError: boolean = false) {
         super();
@@ -139,6 +144,8 @@ class EndTagWidget extends WidgetType {
     ignoreEvent(): boolean { return false; }
 }
 
+// [PRD 2.5.1] Hash Hiding Widget
+// -> Hides Markdown hash characters (#) in Header Toggles for cleaner look.
 class HeaderHashWidget extends WidgetType {
     toDOM(view: EditorView): HTMLElement {
         const span = document.createElement("span");
@@ -147,6 +154,8 @@ class HeaderHashWidget extends WidgetType {
     }
 }
 
+// [PRD 2.3.2] Stack Counting Logic
+// -> Pairs START_TAG and END_TAG to handle nested toggles correctly.
 function findMatchingEndLine(doc: Text, startLineNo: number): number {
     let stack = 1;
     for (let i = startLineNo + 1; i <= doc.lines; i++) {
@@ -163,15 +172,20 @@ function findMatchingEndLine(doc: Text, startLineNo: number): number {
     return -1;
 }
 
-// 1. Fold Service
+// [PRD 3.1.2] Native Fold Service Integration
+// -> Determines foldable ranges for CodeMirror to handle.
 const notionFoldService = foldService.of((state: EditorState, lineStart: number, lineEnd: number) => {
     const line = state.doc.lineAt(lineStart);
     const text = line.text;
 
+    // [PRD 3.1.3] Gutter Arrow Control
+    // -> EXCLUDE Basic Toggles (|>) from native folding to suppress the gutter arrow.
     if (text.startsWith(START_TAG)) {
         return null;
     }
 
+    // [PRD 2.3.1] Scoped Header Folding
+    // -> Prevents header folding from consuming the closing tag (<|).
     if (text.trimStart().startsWith("#")) {
         const match = text.match(/^(#+)\s/);
         if (!match) return null;
@@ -209,6 +223,8 @@ const notionFoldService = foldService.of((state: EditorState, lineStart: number,
         }
     }
 
+    // [PRD 2.5.2] Code Block Toggle
+    // -> EXCLUDE Code Block Toggles from native folding to suppress gutter arrow.
     const trimmed = text.trimStart();
     const backtickMatch = trimmed.match(/^`{3}.*>$/);
     const tildeMatch = trimmed.match(/^~{3}.*>$/);
@@ -222,7 +238,8 @@ const notionFoldService = foldService.of((state: EditorState, lineStart: number,
 
 
 
-// [Separated] Toggle Plugin (For Decorations Only)
+// [PRD 3.1.1] ViewPlugin for Decorations
+// -> Handles all visual replacements (Widgets, Backgrounds) in the editor buffer.
 const togglePlugin = ViewPlugin.fromClass(
     class {
         decorations: DecorationSet;
@@ -232,6 +249,8 @@ const togglePlugin = ViewPlugin.fromClass(
         }
 
         update(update: ViewUpdate) {
+            // [PRD 3.2.1] Event-Driven Update
+            // -> Only rebuild when necessary (Doc Changed, Folded, Viewport, Selection overlap).
             let shouldUpdate = update.docChanged || update.viewportChanged || update.transactions.some(tr => tr.effects.some((e: StateEffect<any>) => e.is(foldEffect) || e.is(unfoldEffect)));
 
             if (!shouldUpdate && update.selectionSet) {
@@ -271,6 +290,8 @@ const togglePlugin = ViewPlugin.fromClass(
             }
             const decos: DecoSpec[] = [];
 
+            // [PRD 3.2.2] Stack & Difference Array Algorithm
+            // -> Calculates indentation levels efficiently (O(N)).
             const openStack: number[] = [];
             const validRanges: { start: number, end: number }[] = [];
 
@@ -298,22 +319,27 @@ const togglePlugin = ViewPlugin.fromClass(
             let runningStack = 0;
             let inCodeBlock = false;
 
+            // Single Pass Loop for Decorations
             for (let i = 1; i <= lineCount; i++) {
                 currentLevel += diff[i];
                 const line = doc.line(i);
                 const text = line.text;
                 const trimmedText = text.trimStart();
 
+                // [PRD 2.4.1] Background Marking
+                // -> Applies indentation classes based on level.
                 if (currentLevel > 0) {
                     const safeLevel = Math.min(currentLevel, 8);
                     let classNames = `toggle-bg toggle-bg-level-${safeLevel}`;
 
+                    // Rounding Logic
                     if (trimmedText.startsWith(START_TAG)) {
                         classNames += " toggle-round-top";
                         try {
                             const contentAfter = trimmedText.slice(START_TAG.length);
                             const headerMatch = contentAfter.match(/^\s*(#{1,6})\s/);
 
+                            // [PRD 2.5.1] Header Toggle Logic
                             if (headerMatch) {
                                 const level = headerMatch[1].length;
                                 classNames += ` cm-header cm-header-${level} HyperMD-header HyperMD-header-${level}`;
@@ -358,6 +384,7 @@ const togglePlugin = ViewPlugin.fromClass(
                     });
                 }
 
+                // [PRD 2.5.2] Code Block Toggle Logic (Triangle Injection)
                 if (trimmedText.startsWith("```") || trimmedText.startsWith("~~~")) {
                     const isCodeBlockToggle = /^(```|~~~).*>\s*$/.test(trimmedText);
 
@@ -401,6 +428,7 @@ const togglePlugin = ViewPlugin.fromClass(
 
                 if (inCodeBlock) continue;
 
+                // [PRD 2.2.1] Start Widget Logic (Basic Toggle)
                 if (trimmedText.startsWith(START_TAG)) {
                     runningStack++;
                     const indentLen = text.length - trimmedText.length;
@@ -441,6 +469,7 @@ const togglePlugin = ViewPlugin.fromClass(
                     }
                 }
 
+                // [PRD 2.2.2] End Widget Logic
                 if (trimmedText.startsWith(END_TAG)) {
                     const indentLen = text.length - trimmedText.length;
                     const rangeFrom = line.from + indentLen;
@@ -471,6 +500,7 @@ const togglePlugin = ViewPlugin.fromClass(
                     }
                 }
 
+                // [PRD 2.5.4] Copy Widget Logic
                 if (trimmedText.startsWith(START_TAG)) {
                     const endLineNo = findMatchingEndLine(doc, i);
 
@@ -506,7 +536,8 @@ const togglePlugin = ViewPlugin.fromClass(
     }
 );
 
-// 3. Auto-Close Keymap
+// [PRD 2.1.2] Auto-Close Keymap
+// -> Inserts closing tag (<|) automatically when Space is pressed after |>
 const autoCloseKeymap = Prec.highest(keymap.of([{
     key: "Space",
     run: (view: EditorView) => {
@@ -532,7 +563,8 @@ const autoCloseKeymap = Prec.highest(keymap.of([{
     }
 }]));
 
-// 4. Hide Native Gutter Arrow (State Facet)
+// [PRD 3.1.3] Hide Native Gutter Arrow (Extension)
+// -> Marks lines with .toggle-hide-native-fold to hide native fold indicators via CSS.
 const hideFoldMarker = new class extends GutterMarker {
     elementClass = "toggle-hide-native-fold";
 }
@@ -541,19 +573,21 @@ const hideNativeFoldGutter = gutterLineClass.compute(["doc"], (state: EditorStat
     const builder = new RangeSetBuilder<GutterMarker>();
     const doc = state.doc;
 
+    // O(N) Prefix Scan - lightweight enough for doc length
     for (let i = 1; i <= doc.lines; i++) {
         const line = doc.line(i);
         const text = line.text.trimStart();
 
-        // 1. Basic Toggle
+        // 1. Basic Toggle (|>)
         if (text.startsWith(START_TAG)) {
             const contentAfter = text.slice(START_TAG.length);
             const isHeader = /^\s*(#{1,6})\s/.test(contentAfter);
+            // Headers keep native arrows, others hide it
             if (!isHeader) {
                 builder.add(line.from, line.from, hideFoldMarker);
             }
         }
-        // 2. Code Block Toggle
+        // 2. Code Block Toggle (```>)
         else if ((text.startsWith("```") || text.startsWith("~~~")) && /^(```|~~~).*>\s*$/.test(text)) {
             builder.add(line.from, line.from, hideFoldMarker);
         }
