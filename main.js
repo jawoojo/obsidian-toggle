@@ -236,6 +236,8 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
             const text = line.text.trimStart();
             if (text.startsWith(START_TAG))
               return true;
+            if ((text.startsWith("```") || text.startsWith("~~~")) && /^(```|~~~).*>\s*$/.test(text))
+              return true;
             if (text.startsWith(END_TAG))
               return true;
           }

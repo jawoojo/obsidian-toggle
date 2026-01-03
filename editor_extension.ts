@@ -308,6 +308,8 @@ const togglePlugin = ViewPlugin.fromClass(
                         const text = line.text.trimStart();
                         // If we touch the START_TAG, we need to re-render to show raw text
                         if (text.startsWith(START_TAG)) return true;
+                        // Check for Code Block Toggle
+                        if ((text.startsWith("```") || text.startsWith("~~~")) && /^(```|~~~).*>\s*$/.test(text)) return true;
                         // End Tag also uses JS replacement, so monitor it too
                         if (text.startsWith(END_TAG)) return true;
                     }
