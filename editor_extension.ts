@@ -256,9 +256,9 @@ const notionFoldService = foldService.of((state: EditorState, lineStart: number,
     // User Requirement: Support "```>", "```python>", "```python >" (Ends with >)
     const trimmed = text.trimStart();
 
-    // Regex: Start with 3 backticks/tildes, contain anything, END with >
-    const backtickMatch = trimmed.match(/^`{3}.*>$/);
-    const tildeMatch = trimmed.match(/^~{3}.*>$/);
+    // Regex: Start with 3 backticks/tildes, contain anything, END with > (allow trailing spaces)
+    const backtickMatch = trimmed.match(/^`{3}.*>\s*$/);
+    const tildeMatch = trimmed.match(/^~{3}.*>\s*$/);
 
     if (backtickMatch || tildeMatch) {
         const isBacktick = !!backtickMatch;
@@ -308,7 +308,7 @@ const togglePlugin = ViewPlugin.fromClass(
                         const text = line.text.trimStart();
                         // If we touch the START_TAG, we need to re-render to show raw text
                         if (text.startsWith(START_TAG)) return true;
-                        // Check for Code Block Toggle
+                        // Check for Code Block Toggle (Robust)
                         if ((text.startsWith("```") || text.startsWith("~~~")) && /^(```|~~~).*>\s*$/.test(text)) return true;
                         // End Tag also uses JS replacement, so monitor it too
                         if (text.startsWith(END_TAG)) return true;

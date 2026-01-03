@@ -201,8 +201,8 @@ var notionFoldService = import_language.foldService.of((state, lineStart, lineEn
     }
   }
   const trimmed = text.trimStart();
-  const backtickMatch = trimmed.match(/^`{3}.*>$/);
-  const tildeMatch = trimmed.match(/^~{3}.*>$/);
+  const backtickMatch = trimmed.match(/^`{3}.*>\s*$/);
+  const tildeMatch = trimmed.match(/^~{3}.*>\s*$/);
   if (backtickMatch || tildeMatch) {
     const isBacktick = !!backtickMatch;
     const isTilde = !!tildeMatch;
