@@ -105,7 +105,8 @@
     transition: transform 0.2s ease;
     vertical-align: middle;
     user-select: none;
-    margin-right: 4px;
+    margin-right: 8px;
+    /* [Fix] Notion Style Spacing */
 }
 
 .toggle-widget:hover {
