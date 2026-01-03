@@ -22,7 +22,7 @@ import {
     unfoldEffect,
     foldedRanges
 } from "@codemirror/language";
-import { getIcon } from "obsidian";
+import { getIcon, Notice } from "obsidian";
 
 // Constants
 const START_TAG = "|> "; // [Reverted] Strict space required
@@ -127,7 +127,9 @@ class CopyWidget extends WidgetType {
 
             // Slice preserves newlines
             const text = doc.sliceString(fromPos, toPos);
-            navigator.clipboard.writeText(text);
+            navigator.clipboard.writeText(text).then(() => {
+                new Notice("Copied to clipboard");
+            });
         };
         return span;
     }
@@ -501,6 +503,17 @@ const togglePlugin = ViewPlugin.fromClass(
                         if (codeBlockEndLine !== -1) {
                             const foldStart = line.to;
                             const foldEnd = doc.line(codeBlockEndLine).to;
+
+                            // [New Feature] Add Copy Button for Code Block Toggle
+                            // Position it at the end of the line
+                            decos.push({
+                                from: line.to,
+                                to: line.to,
+                                deco: Decoration.widget({
+                                    widget: new CopyWidget(i, codeBlockEndLine),
+                                    side: 1
+                                })
+                            });
 
                             let isFolded = false;
                             ranges.between(foldStart, foldEnd, (from, to) => {

@@ -111,7 +111,9 @@ var CopyWidget = class extends import_view.WidgetType {
       const fromPos = doc.line(this.startLineNo + 1).from;
       const toPos = doc.line(this.endLineNo - 1).to;
       const text = doc.sliceString(fromPos, toPos);
-      navigator.clipboard.writeText(text);
+      navigator.clipboard.writeText(text).then(() => {
+        new import_obsidian.Notice("Copied to clipboard");
+      });
     };
     return span;
   }
@@ -368,6 +370,14 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
             if (codeBlockEndLine !== -1) {
               const foldStart = line.to;
               const foldEnd = doc.line(codeBlockEndLine).to;
+              decos.push({
+                from: line.to,
+                to: line.to,
+                deco: import_view.Decoration.widget({
+                  widget: new CopyWidget(i, codeBlockEndLine),
+                  side: 1
+                })
+              });
               let isFolded = false;
               ranges.between(foldStart, foldEnd, (from, to) => {
                 if (from === foldStart && to === foldEnd)
