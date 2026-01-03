@@ -462,6 +462,7 @@ const togglePlugin = ViewPlugin.fromClass(
                         // [New Feature] Render Triangle for Code Block Toggle
                         const indentLen = text.length - trimmedText.length;
                         const rangeFrom = line.from + indentLen;
+                        const rangeTo = rangeFrom + trimmedText.length; // Range of the tag
 
                         // Find Key: We need to find matching END fence to enable folding
                         // Re-using logic similar to foldService
@@ -486,15 +487,25 @@ const togglePlugin = ViewPlugin.fromClass(
                                 if (from === foldStart && to === foldEnd) isFolded = true;
                             });
 
-                            // Inject Triangle Widget at START of line
-                            decos.push({
-                                from: rangeFrom,
-                                to: rangeFrom,
-                                deco: Decoration.widget({
-                                    widget: new ToggleWidget(isFolded, foldStart, foldEnd, false), // visible=true
-                                    side: -1
-                                })
-                            });
+                            // [Selection Logic] Show text if cursor touches tag
+                            let isSelected = false;
+                            for (const r of selection.ranges) {
+                                if (r.to >= rangeFrom && r.from <= rangeTo) {
+                                    isSelected = true;
+                                    break;
+                                }
+                            }
+
+                            if (!isSelected) {
+                                decos.push({
+                                    from: rangeFrom,
+                                    to: rangeTo,
+                                    deco: Decoration.replace({
+                                        widget: new ToggleWidget(isFolded, foldStart, foldEnd, false),
+                                        inclusive: true
+                                    })
+                                });
+                            }
                         }
                     }
 

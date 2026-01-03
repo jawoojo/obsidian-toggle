@@ -340,6 +340,7 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
           if (!inCodeBlock && isCodeBlockToggle) {
             const indentLen = text.length - trimmedText.length;
             const rangeFrom = line.from + indentLen;
+            const rangeTo = rangeFrom + trimmedText.length;
             const endToken = trimmedText.startsWith("```") ? "```" : "~~~";
             let codeBlockEndLine = -1;
             for (let k = i + 1; k <= lineCount; k++) {
@@ -357,15 +358,23 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
                 if (from === foldStart && to === foldEnd)
                   isFolded = true;
               });
-              decos.push({
-                from: rangeFrom,
-                to: rangeFrom,
-                deco: import_view.Decoration.widget({
-                  widget: new ToggleWidget(isFolded, foldStart, foldEnd, false),
-                  // visible=true
-                  side: -1
-                })
-              });
+              let isSelected = false;
+              for (const r of selection.ranges) {
+                if (r.to >= rangeFrom && r.from <= rangeTo) {
+                  isSelected = true;
+                  break;
+                }
+              }
+              if (!isSelected) {
+                decos.push({
+                  from: rangeFrom,
+                  to: rangeTo,
+                  deco: import_view.Decoration.replace({
+                    widget: new ToggleWidget(isFolded, foldStart, foldEnd, false),
+                    inclusive: true
+                  })
+                });
+              }
             }
           }
           inCodeBlock = !inCodeBlock;
