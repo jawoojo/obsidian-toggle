@@ -106,7 +106,7 @@
     transition: transform 0.2s ease;
     vertical-align: middle;
     user-select: none;
-    margin-right: 8px;
+    margin-right: 10px;
     /* [Fix] Notion Style Spacing */
 }
 
