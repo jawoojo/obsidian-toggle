@@ -86,14 +86,18 @@ var ToggleWidget = class extends import_view.WidgetType {
   }
 };
 var CopyWidget = class extends import_view.WidgetType {
-  constructor(startLineNo, endLineNo) {
+  constructor(startLineNo, endLineNo, alwaysVisible = false) {
     super();
     this.startLineNo = startLineNo;
     this.endLineNo = endLineNo;
+    this.alwaysVisible = alwaysVisible;
   }
   toDOM(view) {
     const span = document.createElement("span");
     span.className = "toggle-copy-btn";
+    if (this.alwaysVisible) {
+      span.classList.add("always-visible");
+    }
     const iconInfo = (0, import_obsidian.getIcon)("copy");
     if (iconInfo) {
       span.appendChild(iconInfo);
@@ -374,7 +378,8 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
                 from: line.to,
                 to: line.to,
                 deco: import_view.Decoration.widget({
-                  widget: new CopyWidget(i, codeBlockEndLine),
+                  widget: new CopyWidget(i, codeBlockEndLine, true),
+                  // [Fix] Always visible for Code Block
                   side: 1
                 })
               });

@@ -90,13 +90,16 @@ class ToggleWidget extends WidgetType {
 
 // [PRD Example] Copy Widget (Top-Right)
 class CopyWidget extends WidgetType {
-    constructor(readonly startLineNo: number, readonly endLineNo: number) {
+    constructor(readonly startLineNo: number, readonly endLineNo: number, readonly alwaysVisible: boolean = false) {
         super();
     }
 
     toDOM(view: EditorView): HTMLElement {
         const span = document.createElement("span");
         span.className = "toggle-copy-btn";
+        if (this.alwaysVisible) {
+            span.classList.add("always-visible");
+        }
 
         // Use native Obsidian icon
         const iconInfo = getIcon("copy");
@@ -510,7 +513,7 @@ const togglePlugin = ViewPlugin.fromClass(
                                 from: line.to,
                                 to: line.to,
                                 deco: Decoration.widget({
-                                    widget: new CopyWidget(i, codeBlockEndLine),
+                                    widget: new CopyWidget(i, codeBlockEndLine, true), // [Fix] Always visible for Code Block
                                     side: 1
                                 })
                             });

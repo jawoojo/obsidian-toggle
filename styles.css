@@ -142,6 +142,11 @@
     top: 4px;
     /* Default State: Hidden (Eco-Friendly) */
     opacity: 0;
+}
+
+/* [Fix] Always Visible Modifier */
+.toggle-copy-btn.always-visible {
+    opacity: 1 !important;
 
     background-color: transparent;
     cursor: pointer;
