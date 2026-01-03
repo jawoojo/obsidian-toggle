@@ -59,6 +59,19 @@ var ToggleWidget = class extends import_view.WidgetType {
           view.dispatch({
             effects: import_language.unfoldEffect.of({ from: this.foldStart, to: this.foldEnd })
           });
+          setTimeout(() => {
+            const pos = this.foldEnd;
+            view.dispatch({
+              changes: { from: pos, insert: " " },
+              annotations: import_state.Transaction.addToHistory.of(false)
+            });
+            setTimeout(() => {
+              view.dispatch({
+                changes: { from: pos, to: pos + 1, insert: "" },
+                annotations: import_state.Transaction.addToHistory.of(false)
+              });
+            }, 5);
+          }, 5);
         } else {
           view.dispatch({
             effects: import_language.foldEffect.of({ from: this.foldStart, to: this.foldEnd })

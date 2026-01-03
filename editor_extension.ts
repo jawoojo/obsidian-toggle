@@ -13,7 +13,8 @@ import {
     EditorState,
     Text,
     StateEffect,
-    Prec
+    Prec,
+    Transaction
 } from "@codemirror/state";
 import {
     foldService,
@@ -57,6 +58,23 @@ class ToggleWidget extends WidgetType {
                     view.dispatch({
                         effects: unfoldEffect.of({ from: this.foldStart, to: this.foldEnd })
                     });
+
+                    // [Fix] Dummy Edit: Insert & Delete a space to FORCE HyperMD re-parsing
+                    // This is the "Cheat Code" to fix syntax highlighting.
+                    setTimeout(() => {
+                        const pos = this.foldEnd;
+                        view.dispatch({
+                            changes: { from: pos, insert: " " },
+                            annotations: Transaction.addToHistory.of(false)
+                        });
+
+                        setTimeout(() => {
+                            view.dispatch({
+                                changes: { from: pos, to: pos + 1, insert: "" },
+                                annotations: Transaction.addToHistory.of(false)
+                            });
+                        }, 5);
+                    }, 5);
                 } else {
                     view.dispatch({
                         effects: foldEffect.of({ from: this.foldStart, to: this.foldEnd })
