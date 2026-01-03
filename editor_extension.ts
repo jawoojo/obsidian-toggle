@@ -278,9 +278,7 @@ const notionFoldService = foldService.of((state: EditorState, lineStart: number,
 
         if (codeBlockEndLine !== -1) {
             const endLine = state.doc.line(codeBlockEndLine);
-            // [Fix] Fold ONLY up to the line BEFORE the closing fence. 
-            // This leaves the closing ``` visible, preventing syntax highlighting breakage.
-            return { from: line.to, to: endLine.from - 1 };
+            return { from: line.to, to: endLine.to };
         }
     }
 
@@ -484,7 +482,7 @@ const togglePlugin = ViewPlugin.fromClass(
 
                         if (codeBlockEndLine !== -1) {
                             const foldStart = line.to;
-                            const foldEnd = doc.line(codeBlockEndLine).from - 1; // [Fix] Exclude closing fence
+                            const foldEnd = doc.line(codeBlockEndLine).to;
 
                             let isFolded = false;
                             ranges.between(foldStart, foldEnd, (from, to) => {

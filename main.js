@@ -217,7 +217,7 @@ var notionFoldService = import_language.foldService.of((state, lineStart, lineEn
     }
     if (codeBlockEndLine !== -1) {
       const endLine = state.doc.line(codeBlockEndLine);
-      return { from: line.to, to: endLine.from - 1 };
+      return { from: line.to, to: endLine.to };
     }
   }
   return null;
@@ -354,7 +354,7 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
             }
             if (codeBlockEndLine !== -1) {
               const foldStart = line.to;
-              const foldEnd = doc.line(codeBlockEndLine).from - 1;
+              const foldEnd = doc.line(codeBlockEndLine).to;
               let isFolded = false;
               ranges.between(foldStart, foldEnd, (from, to) => {
                 if (from === foldStart && to === foldEnd)
