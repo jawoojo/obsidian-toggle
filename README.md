@@ -40,6 +40,12 @@ console.log("Toggleable Code");
 \`\`\`
 ```
 
+---
+## Support
+If you find this plugin helpful, consider buying me a coffee!
+
+<a href="https://www.buymeacoffee.com/jawoojo" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 40px !important;width: 145px !important;" ></a>
+
 ## License
 
 MIT
