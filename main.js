@@ -52,10 +52,9 @@ var ToggleWidget = class extends import_view.WidgetType {
       span.classList.add("toggle-codeblock");
     }
     if (this.invisible) {
-      span.style.display = "none";
+      span.classList.add("u-hidden");
     } else {
       span.textContent = this.isFolded ? "\u25B6" : "\u25BC";
-      span.style.cursor = "pointer";
       span.onclick = (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -121,6 +120,9 @@ var CopyWidget = class extends import_view.WidgetType {
       const text = doc.sliceString(fromPos, toPos);
       navigator.clipboard.writeText(text).then(() => {
         new import_obsidian.Notice("Copied to clipboard");
+      }).catch((err) => {
+        console.error("Failed to copy: ", err);
+        new import_obsidian.Notice("Copy failed");
       });
     };
     return span;
@@ -228,7 +230,6 @@ var notionFoldService = import_language.foldService.of((state, lineStart, lineEn
   const tildeMatch = trimmed.match(/^~{3}.*>\s*$/);
   if (backtickMatch || tildeMatch) {
     const isBacktick = !!backtickMatch;
-    const isTilde = !!tildeMatch;
     const endToken = isBacktick ? "```" : "~~~";
     let codeBlockEndLine = -1;
     for (let i = line.number + 1; i <= state.doc.lines; i++) {
@@ -303,7 +304,6 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
         }
       }
       let currentLevel = 0;
-      let prevLevel = 0;
       let runningStack = 0;
       let inCodeBlock = false;
       for (let i = 1; i <= lineCount; i++) {
@@ -359,7 +359,6 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
             })
           });
         }
-        prevLevel = currentLevel;
         if (trimmedText.startsWith("```") || trimmedText.startsWith("~~~")) {
           const isCodeBlockToggle = /^(```|~~~).*>\s*$/.test(trimmedText);
           if (!inCodeBlock && isCodeBlockToggle) {
@@ -612,7 +611,6 @@ async function readingModeProcessor(el, ctx) {
       const walker = document.createTreeWalker(child, NodeFilter.SHOW_TEXT);
       const firstTextNode = walker.nextNode();
       if (firstTextNode && firstTextNode.nodeValue) {
-        let processed = false;
         if (firstTextNode.nodeValue.trimStart().startsWith("|>")) {
           const originalVal = firstTextNode.nodeValue;
           const triggerIdx = originalVal.indexOf("|>");
@@ -624,7 +622,6 @@ async function readingModeProcessor(el, ctx) {
               const triangle = document.createElement("span");
               triangle.className = "toggle-widget";
               triangle.textContent = "\u25BC";
-              triangle.style.marginRight = "5px";
               if (firstTextNode.parentNode) {
                 firstTextNode.parentNode.insertBefore(triangle, firstTextNode.nextSibling);
                 const textNodeAfter = document.createTextNode(afterText);
@@ -638,10 +635,7 @@ async function readingModeProcessor(el, ctx) {
                   firstTextNode.parentNode.insertBefore(textNodeAfter, firstTextNode.nextSibling);
                 }
                 const level = headerMatch[1].length;
-                child.classList.add(`cm-header`, `cm-header-${level}`);
-                child.style.fontWeight = "bold";
-                child.style.fontSize = `var(--h${level}-size)`;
-                child.style.color = `var(--h${level}-color)`;
+                child.classList.add(`cm-header`, `cm-header-${level}`, `toggle-header-${level}`);
               } else {
                 if (firstTextNode.parentNode) {
                   const textNodeAfter = document.createTextNode(afterText);
@@ -666,7 +660,7 @@ async function readingModeProcessor(el, ctx) {
           navigator.clipboard.writeText(contentLines.join("\n"));
         };
         child.appendChild(copyBtn);
-        child.style.position = "relative";
+        child.classList.add("u-relative");
       }
     }
     if (child.textContent && child.textContent.includes(END_TAG2)) {
@@ -698,13 +692,13 @@ function findMatchingEndLine2(levels, lines, startLine) {
 
 // main.ts
 var TogglePlugin = class extends import_obsidian3.Plugin {
-  async onload() {
-    console.log("Loading Toggle Plugin V3.1 (Nested Toggles + Native)");
+  onload() {
     this.registerEditorExtension(toggleExtension);
     this.registerMarkdownPostProcessor((el, ctx) => readingModeProcessor(el, ctx));
     this.addCommand({
       id: "insert-toggle",
-      name: "Insert Toggle",
+      name: "Insert",
+      // [Refactor] Removed 'Toggle' (Redundant)
       editorCallback: (editor) => {
         const selection = editor.getSelection();
         if (selection) {
@@ -726,7 +720,8 @@ ${selection}
     });
     this.addCommand({
       id: "insert-code-toggle",
-      name: "Insert Code Block Toggle",
+      name: "Insert Code Block",
+      // [Refactor] Removed 'Toggle' (Redundant)
       editorCallback: (editor) => {
         const selection = editor.getSelection();
         if (selection) {
@@ -748,6 +743,5 @@ ${selection}
     });
   }
   onunload() {
-    console.log("Unloading Toggle Plugin");
   }
 };
