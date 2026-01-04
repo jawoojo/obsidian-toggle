@@ -1,9 +1,9 @@
 {
-    "id": "obsidian-toggle",
+    "id": "toggle-premium",
     "name": "Toggle",
     "version": "1.0.1",
     "minAppVersion": "0.15.0",
-    "description": "Premium Notion-style toggle for Obsidian.",
+    "description": "A premium, Notion-style toggle plugin with enhanced styling and deep nesting support.",
     "author": "jawoojo",
     "authorUrl": "https://www.buymeacoffee.com/jawoojo",
     "isDesktopOnly": false
