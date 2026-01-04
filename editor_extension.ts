@@ -158,7 +158,7 @@ class EndTagWidget extends WidgetType {
 
         if (this.isError) {
             span.className = "toggle-end-error";
-            span.textContent = "<| (Unmatched)";
+            span.textContent = "<| (unmatched)";
         } else {
             span.className = "toggle-end-widget";
             // Normal: Invisible (handled by CSS)
@@ -461,7 +461,7 @@ const togglePlugin = ViewPlugin.fromClass(
                                     }
                                 }
                             }
-                        } catch (e) {
+                        } catch {
                             // Fail silently to preserve editor stability
                         }
                     }

@@ -142,7 +142,7 @@ var EndTagWidget = class extends import_view.WidgetType {
     const span = document.createElement("span");
     if (this.isError) {
       span.className = "toggle-end-error";
-      span.textContent = "<| (Unmatched)";
+      span.textContent = "<| (unmatched)";
     } else {
       span.className = "toggle-end-widget";
     }
@@ -696,7 +696,9 @@ function findMatchingEndLine2(levels, lines, startLine) {
 var TogglePlugin = class extends import_obsidian3.Plugin {
   onload() {
     this.registerEditorExtension(toggleExtension);
-    this.registerMarkdownPostProcessor((el, ctx) => readingModeProcessor(el, ctx));
+    this.registerMarkdownPostProcessor((el, ctx) => {
+      void readingModeProcessor(el, ctx);
+    });
     this.addCommand({
       id: "insert-toggle",
       name: "Insert",
