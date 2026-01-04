@@ -112,7 +112,7 @@ var CopyWidget = class extends import_view.WidgetType {
       e.stopPropagation();
       const doc = view.state.doc;
       if (this.endLineNo <= this.startLineNo + 1) {
-        navigator.clipboard.writeText("");
+        void navigator.clipboard.writeText("");
         return;
       }
       const fromPos = doc.line(this.startLineNo + 1).from;
@@ -696,8 +696,12 @@ function findMatchingEndLine2(levels, lines, startLine) {
 var TogglePlugin = class extends import_obsidian3.Plugin {
   onload() {
     this.registerEditorExtension(toggleExtension);
-    this.registerMarkdownPostProcessor((el, ctx) => {
-      void readingModeProcessor(el, ctx);
+    this.registerMarkdownPostProcessor(async (el, ctx) => {
+      try {
+        await readingModeProcessor(el, ctx);
+      } catch (error) {
+        console.error("Toggle reading mode error:", error);
+      }
     });
     this.addCommand({
       id: "insert-toggle",
