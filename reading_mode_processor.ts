@@ -221,7 +221,9 @@ export async function readingModeProcessor(el: HTMLElement, ctx: MarkdownPostPro
                     // Calculate text range
                     // lines [currentLine+1 ... endLineNo-1]
                     const contentLines = lines.slice(currentLine + 1, endLineNo);
-                    navigator.clipboard.writeText(contentLines.join("\n"));
+                    void navigator.clipboard.writeText(contentLines.join("\n")).catch(err => {
+                        console.error("Failed to copy:", err);
+                    });
                 };
 
                 child.appendChild(copyBtn);
@@ -236,7 +238,7 @@ export async function readingModeProcessor(el: HTMLElement, ctx: MarkdownPostPro
             // This handles cases where Obsidian merges lines (e.g. Content\n<|) into one element
             const walker = document.createTreeWalker(child, NodeFilter.SHOW_TEXT);
             let textNode: Node | null;
-            while (textNode = walker.nextNode()) {
+            while ((textNode = walker.nextNode())) {
                 if (textNode.nodeValue && textNode.nodeValue.includes(END_TAG)) {
                     // Replace "<|" and preceding newline/spaces if it matches the End Tag pattern
                     // Regex: (Start of node OR Newline) + Optional Whitespace + <|
