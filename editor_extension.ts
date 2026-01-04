@@ -134,7 +134,7 @@ class CopyWidget extends WidgetType {
 
             // Slice preserves newlines
             const text = doc.sliceString(fromPos, toPos);
-            navigator.clipboard.writeText(text).then(() => {
+            void navigator.clipboard.writeText(text).then(() => {
                 new Notice("Copied to clipboard");
             }).catch((err) => {
                 console.error("Failed to copy: ", err);
@@ -327,7 +327,7 @@ const togglePlugin = ViewPlugin.fromClass(
         }
 
         update(update: ViewUpdate) {
-            let shouldUpdate = update.docChanged || update.viewportChanged || update.transactions.some(tr => tr.effects.some((e: StateEffect<any>) => e.is(foldEffect) || e.is(unfoldEffect)));
+            let shouldUpdate = update.docChanged || update.viewportChanged || update.transactions.some(tr => tr.effects.some((e: StateEffect<unknown>) => e.is(foldEffect) || e.is(unfoldEffect)));
 
             // [Restored] Update on selection change to Reveal Toggles (Editor Mode)
             // While CSS handles Copy Button, JS must handle switching Triangle <-> Text

@@ -36,7 +36,7 @@ export default class TogglePlugin extends Plugin {
 
         this.addCommand({
             id: 'insert-code-toggle',
-            name: 'Insert Code Block', // [Refactor] Removed 'Toggle' (Redundant)
+            name: 'Insert code block', // [Refactor] Sentence case
             editorCallback: (editor) => {
                 const selection = editor.getSelection();
 
