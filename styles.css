@@ -110,6 +110,8 @@
     /* [Fix] Notion Style Spacing */
     margin-left: 10px;
     /* [Fix] Symmetric Spacing (User Request) */
+    cursor: pointer;
+    /* [Refactor] Moved from JS */
 }
 
 /* [Fix] Code Block Toggle: No Extra Left Margin */
@@ -142,6 +144,52 @@
 .toggle-end-widget:hover {
     background-color: var(--interactive-accent);
     cursor: pointer;
+}
+
+/* [Refactor] Utility Classes (Bot Feedback) */
+.u-hidden {
+    display: none !important;
+}
+
+.u-relative {
+    position: relative !important;
+}
+
+/* [Refactor] Header Styling Classes (to avoid inline styles) */
+.toggle-header-1 {
+    font-size: var(--h1-size);
+    color: var(--h1-color);
+    font-weight: bold;
+}
+
+.toggle-header-2 {
+    font-size: var(--h2-size);
+    color: var(--h2-color);
+    font-weight: bold;
+}
+
+.toggle-header-3 {
+    font-size: var(--h3-size);
+    color: var(--h3-color);
+    font-weight: bold;
+}
+
+.toggle-header-4 {
+    font-size: var(--h4-size);
+    color: var(--h4-color);
+    font-weight: bold;
+}
+
+.toggle-header-5 {
+    font-size: var(--h5-size);
+    color: var(--h5-color);
+    font-weight: bold;
+}
+
+.toggle-header-6 {
+    font-size: var(--h6-size);
+    color: var(--h6-color);
+    font-weight: bold;
 }
 
 /* [NEW] Copy Button Style */

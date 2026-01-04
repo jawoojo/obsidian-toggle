@@ -1,4 +1,4 @@
-import { MarkdownPostProcessorContext, TFile, getIcon } from "obsidian";
+import { MarkdownPostProcessorContext, TFile, getIcon, App } from "obsidian";
 
 const START_TAG = "|> ";
 const END_TAG = "<|";
@@ -46,7 +46,7 @@ function parseLevels(text: string): { levels: number[], rounds: string[] } {
     return { levels: Array.from(levels), rounds };
 }
 
-declare const app: any;
+declare const app: App;
 
 export async function readingModeProcessor(el: HTMLElement, ctx: MarkdownPostProcessorContext) {
     // 1. Get Source Text
@@ -131,7 +131,7 @@ export async function readingModeProcessor(el: HTMLElement, ctx: MarkdownPostPro
                 // We just want to remove the specific prefix pattern from the start.
 
                 // If it's pure text node
-                let processed = false;
+                // let processed = false; (Removed unused)
                 if (firstTextNode.nodeValue.trimStart().startsWith("|>")) {
                     // Remove |> 
                     // But keep the triangle if NOT header.
@@ -156,7 +156,7 @@ export async function readingModeProcessor(el: HTMLElement, ctx: MarkdownPostPro
                             triangle.textContent = "▼"; // Default open in reading mode?
                             // In Reading mode, everything is static. We can't easily toggle state.
                             // So just show "Down Arrow" to indicate it's open.
-                            triangle.style.marginRight = "5px";
+                            // Margin handled by CSS (.toggle-widget)
 
                             // Insert before the text we just stripped
                             // child.insertBefore(triangle, ...?) 
@@ -188,10 +188,9 @@ export async function readingModeProcessor(el: HTMLElement, ctx: MarkdownPostPro
                                 // Obsidian standard: .markdown-preview-view h1...
                                 // Or use cm-header classes? styles.css targets .cm-header.
                                 // Let's add them + maybe our own utility class.
-                                child.classList.add(`cm-header`, `cm-header-${level}`);
-                                child.style.fontWeight = "bold";
-                                child.style.fontSize = `var(--h${level}-size)`;
-                                child.style.color = `var(--h${level}-color)`;
+                                // Let's add them + maybe our own utility class.
+                                child.classList.add(`cm-header`, `cm-header-${level}`, `toggle-header-${level}`);
+                                // Styles handled by .toggle-header-{n} classes
                             } else {
                                 // Just restore rest of text
                                 if (firstTextNode.parentNode) {
@@ -226,7 +225,7 @@ export async function readingModeProcessor(el: HTMLElement, ctx: MarkdownPostPro
                 };
 
                 child.appendChild(copyBtn);
-                child.style.position = "relative"; // Ensure positioning works
+                child.classList.add("u-relative"); // [Refactor] Use class for positioning
             }
         }
 

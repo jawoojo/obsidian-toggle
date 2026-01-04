@@ -3,14 +3,13 @@ import { toggleExtension } from "./editor_extension";
 import { readingModeProcessor } from "./reading_mode_processor";
 
 export default class TogglePlugin extends Plugin {
-    async onload() {
-        console.log("Loading Toggle Plugin V3.1 (Nested Toggles + Native)");
+    onload() {
         this.registerEditorExtension(toggleExtension);
         this.registerMarkdownPostProcessor((el, ctx) => readingModeProcessor(el, ctx));
 
         this.addCommand({
             id: 'insert-toggle',
-            name: 'Insert Toggle',
+            name: 'Insert', // [Refactor] Removed 'Toggle' (Redundant)
             editorCallback: (editor) => {
                 const selection = editor.getSelection();
 
@@ -37,7 +36,7 @@ export default class TogglePlugin extends Plugin {
 
         this.addCommand({
             id: 'insert-code-toggle',
-            name: 'Insert Code Block Toggle',
+            name: 'Insert Code Block', // [Refactor] Removed 'Toggle' (Redundant)
             editorCallback: (editor) => {
                 const selection = editor.getSelection();
 
@@ -62,6 +61,6 @@ export default class TogglePlugin extends Plugin {
     }
 
     onunload() {
-        console.log("Unloading Toggle Plugin");
+        // Unloading
     }
 }

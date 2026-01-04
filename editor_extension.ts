@@ -27,7 +27,7 @@ import { getIcon, Notice } from "obsidian";
 // Constants
 const START_TAG = "|> "; // [Reverted] Strict space required
 const END_TAG = "<|";
-const INDENT_STEP = 16.5; // Restored Base Grid (16.5px)
+// const INDENT_STEP Removed
 
 // [PRD 3.1.1] Start Widget (Triangle)
 class ToggleWidget extends WidgetType {
@@ -49,10 +49,10 @@ class ToggleWidget extends WidgetType {
         }
 
         if (this.invisible) {
-            span.style.display = "none"; // Hide completely
+            span.classList.add("u-hidden"); // [Refactor] Use class instead of inline style
         } else {
             span.textContent = this.isFolded ? "▶" : "▼";
-            span.style.cursor = "pointer";
+            // Cursor handled by CSS (.toggle-widget)
 
             span.onclick = (e) => {
                 e.preventDefault();
@@ -136,6 +136,9 @@ class CopyWidget extends WidgetType {
             const text = doc.sliceString(fromPos, toPos);
             navigator.clipboard.writeText(text).then(() => {
                 new Notice("Copied to clipboard");
+            }).catch((err) => {
+                console.error("Failed to copy: ", err);
+                new Notice("Copy failed");
             });
         };
         return span;
@@ -289,7 +292,7 @@ const notionFoldService = foldService.of((state: EditorState, lineStart: number,
 
     if (backtickMatch || tildeMatch) {
         const isBacktick = !!backtickMatch;
-        const isTilde = !!tildeMatch;
+        // isTilde removed (unused)
         const endToken = isBacktick ? "```" : "~~~";
 
         let codeBlockEndLine = -1;
@@ -395,7 +398,7 @@ const togglePlugin = ViewPlugin.fromClass(
 
             // --- B. Build Decorations ---
             let currentLevel = 0;
-            let prevLevel = 0; // [New] Track previous line's level
+            // prevLevel removed (unused)
             // Orphan Detection Stack
             let runningStack = 0;
             let inCodeBlock = false; // [New] Track Code Block State
@@ -478,7 +481,7 @@ const togglePlugin = ViewPlugin.fromClass(
                 }
 
                 // Update prevLevel for next iteration
-                prevLevel = currentLevel;
+                // prevLevel = currentLevel; (Removed)
 
                 // [Modified] Code Block Tracking (Guard Only)
                 // Just track state to ignore |> inside code blocks.
