@@ -9,7 +9,7 @@ The `|>` syntax is automatically rendered as a **clickable triangle icon (▶)**
 - **Scoped Folding**: Headers placed *inside* a toggle will fold content only within that toggle block. This keeps your document clean without breaking the global outline hierarchy.
 - **Code Block Toggles**: Use ` ```> ` syntax to make code blocks collapsible.
 - **Copy**: Hover over the title line to reveal a "Copy" button for quick sharing.
-- **Native Integration**: Built on top of Obsidian's core folding engine (`editor.fold`), ensuring native performance and compatibility.
+- **Native Integration**: Built on top of Obsidian's core folding engine, ensuring native performance and compatibility.
 
 ## Usage
 
