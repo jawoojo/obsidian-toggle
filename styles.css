@@ -108,6 +108,8 @@
     user-select: none;
     margin-right: 10px;
     /* [Fix] Notion Style Spacing */
+    margin-left: 10px;
+    /* [Fix] Symmetric Spacing (User Request) */
 }
 
 .toggle-widget:hover {
