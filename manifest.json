@@ -1,7 +1,7 @@
 {
     "id": "toggle-premium",
     "name": "Toggle",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "minAppVersion": "0.15.0",
     "description": "A premium, Notion-style toggle plugin with enhanced styling and deep nesting support.",
     "author": "jawoojo",
