@@ -118,7 +118,7 @@ var CopyWidget = class extends import_view.WidgetType {
       const fromPos = doc.line(this.startLineNo + 1).from;
       const toPos = doc.line(this.endLineNo - 1).to;
       const text = doc.sliceString(fromPos, toPos);
-      navigator.clipboard.writeText(text).then(() => {
+      void navigator.clipboard.writeText(text).then(() => {
         new import_obsidian.Notice("Copied to clipboard");
       }).catch((err) => {
         console.error("Failed to copy: ", err);
@@ -657,7 +657,9 @@ async function readingModeProcessor(el, ctx) {
           e.preventDefault();
           e.stopPropagation();
           const contentLines = lines.slice(currentLine + 1, endLineNo);
-          navigator.clipboard.writeText(contentLines.join("\n"));
+          void navigator.clipboard.writeText(contentLines.join("\n")).catch((err) => {
+            console.error("Failed to copy:", err);
+          });
         };
         child.appendChild(copyBtn);
         child.classList.add("u-relative");
@@ -720,8 +722,8 @@ ${selection}
     });
     this.addCommand({
       id: "insert-code-toggle",
-      name: "Insert Code Block",
-      // [Refactor] Removed 'Toggle' (Redundant)
+      name: "Insert code block",
+      // [Refactor] Sentence case
       editorCallback: (editor) => {
         const selection = editor.getSelection();
         if (selection) {
