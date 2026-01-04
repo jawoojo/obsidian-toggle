@@ -1,15 +1,15 @@
 # Obsidian Toggle Plugin
 
-A premium, Notion-style toggle plugin for Obsidian. Use custom syntax to create collapsible blocks with enhanced styling.
+A premium, **Notion-style toggle plugin** for Obsidian. 
+The `|>` syntax is automatically rendered as a **clickable triangle icon (▶)**, allowing you to fold and unfold content with a single click.
 
 ## Features
 
 - **Notion-Style Toggles**: Use `|>` and `<|` to create toggle blocks.
-- **Nested Toggles**: endless nesting with visually distinct levels (up to 8 levels).
-- **Header Support**: `|> # Header` syntax supported. Triangle hides automatically for headers.
-- **Code Block Toggles**: Support for ` ```> ` or ` ```python > ` syntax.
-- **Reading Mode Support**: Fully functional and styled in Reading View.
-- **Command Palette**: Insert toggles easily via commands.
+- **Scoped Folding**: Headers placed *inside* a toggle will fold content only within that toggle block. This keeps your document clean without breaking the global outline hierarchy.
+- **Code Block Toggles**: Use ` ```> ` syntax to make code blocks collapsible.
+- **Copy**: Hover over the title line to reveal a "Copy" button for quick sharing.
+- **Native Integration**: Built on top of Obsidian's core folding engine (`editor.fold`), ensuring native performance and compatibility.
 
 ## Usage
 
@@ -20,24 +20,25 @@ Content...
 <|
 ```
 
+
 ### Header Toggle
+You can use a standard Markdown header as the title of your toggle. 
+It functions exactly like a normal toggle but applies the header's styling (font size, weight, etc.) to the title line.
 ```
-|> # My Header
-Content...
+|> # My Styled Header
+This content is folded inside the toggle.
+The header creates a visual section but remains part of the toggle logic.
 <|
 ```
 
 ### Code Block Toggle
+Add a `>` after the opening code fence to create a collapsible code block.
+- **Syntax**: ` \`\`\`> ` or ` \`\`\`javascript > `.
 ```text
-\`\`\`> 
+\`\`\`javascript >
 console.log("Toggleable Code");
 \`\`\`
 ```
-
-## Installation
-
-1. Search for "Toggle" in Obsidian Community Plugins (Coming Soon).
-2. Or install manually by copying `main.js`, `manifest.json`, `styles.css` to your vault's `.obsidian/plugins/obsidian-toggle/` folder.
 
 ## License
 
