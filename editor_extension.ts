@@ -35,7 +35,8 @@ class ToggleWidget extends WidgetType {
         readonly isFolded: boolean,
         readonly foldStart: number,
         readonly foldEnd: number,
-        readonly invisible: boolean = false // [New] Option to hide triangle
+        readonly invisible: boolean = false, // [New] Option to hide triangle
+        readonly isCodeBlock: boolean = false // [New] Code Block specific check
     ) {
         super();
     }
@@ -43,6 +44,9 @@ class ToggleWidget extends WidgetType {
     toDOM(view: EditorView): HTMLElement {
         const span = document.createElement("span");
         span.className = "toggle-widget";
+        if (this.isCodeBlock) {
+            span.classList.add("toggle-codeblock");
+        }
 
         if (this.invisible) {
             span.style.display = "none"; // Hide completely
@@ -537,7 +541,7 @@ const togglePlugin = ViewPlugin.fromClass(
                                     from: rangeFrom,
                                     to: rangeTo,
                                     deco: Decoration.replace({
-                                        widget: new ToggleWidget(isFolded, foldStart, foldEnd, false),
+                                        widget: new ToggleWidget(isFolded, foldStart, foldEnd, false, true), // isCodeBlock = true
                                         inclusive: true
                                     })
                                 });
@@ -605,7 +609,7 @@ const togglePlugin = ViewPlugin.fromClass(
                                 from: rangeFrom,
                                 to: rangeTo,
                                 deco: Decoration.replace({
-                                    widget: new ToggleWidget(isFolded, foldStart, foldEnd, isHeader), // Pass isHeader as invisible flag
+                                    widget: new ToggleWidget(isFolded, foldStart, foldEnd, isHeader, false), // Pass isHeader as invisible flag, isCodeBlock = false
                                     inclusive: true
                                 })
                             });

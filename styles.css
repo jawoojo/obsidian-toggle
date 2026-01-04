@@ -112,6 +112,11 @@
     /* [Fix] Symmetric Spacing (User Request) */
 }
 
+/* [Fix] Code Block Toggle: No Extra Left Margin */
+.toggle-widget.toggle-codeblock {
+    margin-left: 0px !important;
+}
+
 .toggle-widget:hover {
     color: var(--text-accent);
 }

@@ -37,16 +37,20 @@ var import_obsidian = require("obsidian");
 var START_TAG = "|> ";
 var END_TAG = "<|";
 var ToggleWidget = class extends import_view.WidgetType {
-  constructor(isFolded, foldStart, foldEnd, invisible = false) {
+  constructor(isFolded, foldStart, foldEnd, invisible = false, isCodeBlock = false) {
     super();
     this.isFolded = isFolded;
     this.foldStart = foldStart;
     this.foldEnd = foldEnd;
     this.invisible = invisible;
+    this.isCodeBlock = isCodeBlock;
   }
   toDOM(view) {
     const span = document.createElement("span");
     span.className = "toggle-widget";
+    if (this.isCodeBlock) {
+      span.classList.add("toggle-codeblock");
+    }
     if (this.invisible) {
       span.style.display = "none";
     } else {
@@ -400,7 +404,8 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
                   from: rangeFrom,
                   to: rangeTo,
                   deco: import_view.Decoration.replace({
-                    widget: new ToggleWidget(isFolded, foldStart, foldEnd, false),
+                    widget: new ToggleWidget(isFolded, foldStart, foldEnd, false, true),
+                    // isCodeBlock = true
                     inclusive: true
                   })
                 });
@@ -440,8 +445,8 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
                 from: rangeFrom,
                 to: rangeTo,
                 deco: import_view.Decoration.replace({
-                  widget: new ToggleWidget(isFolded, foldStart, foldEnd, isHeader),
-                  // Pass isHeader as invisible flag
+                  widget: new ToggleWidget(isFolded, foldStart, foldEnd, isHeader, false),
+                  // Pass isHeader as invisible flag, isCodeBlock = false
                   inclusive: true
                 })
               });
