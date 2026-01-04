@@ -123,7 +123,7 @@ class CopyWidget extends WidgetType {
 
             // Safety check: if empty or immediate close
             if (this.endLineNo <= this.startLineNo + 1) {
-                navigator.clipboard.writeText("");
+                void navigator.clipboard.writeText("");
                 return;
             }
 

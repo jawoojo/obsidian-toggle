@@ -5,8 +5,12 @@ import { readingModeProcessor } from "./reading_mode_processor";
 export default class TogglePlugin extends Plugin {
     onload() {
         this.registerEditorExtension(toggleExtension);
-        this.registerMarkdownPostProcessor((el, ctx) => {
-            void readingModeProcessor(el, ctx);
+        this.registerMarkdownPostProcessor(async (el, ctx) => {
+            try {
+                await readingModeProcessor(el, ctx);
+            } catch (error) {
+                console.error("Toggle reading mode error:", error);
+            }
         });
 
         this.addCommand({
