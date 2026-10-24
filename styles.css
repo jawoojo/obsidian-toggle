@@ -1,7 +1,7 @@
 /* [PRD 3.2.3] Toggle Background Highlight */
 .toggle-bg {
     /* [PRD 2.4.1] Variable for customization */
-    --toggle-opacity-step: 0.03;
+    --toggle-opacity-step: 0.04;
 
     border-radius: 0;
     position: relative;
@@ -50,15 +50,15 @@
 
 /* Reversing Opacity from Level 6 */
 .theme-light .toggle-bg-level-6 {
-    background-color: rgba(0, 0, 0, calc(var(--toggle-opacity-step) * 4));
+    background-color: rgba(0, 0, 0, calc(var(--toggle-opacity-step) * 6));
 }
 
 .theme-light .toggle-bg-level-7 {
-    background-color: rgba(0, 0, 0, calc(var(--toggle-opacity-step) * 3));
+    background-color: rgba(0, 0, 0, calc(var(--toggle-opacity-step) * 7));
 }
 
 .theme-light .toggle-bg-level-8 {
-    background-color: rgba(0, 0, 0, calc(var(--toggle-opacity-step) * 2));
+    background-color: rgba(0, 0, 0, calc(var(--toggle-opacity-step) * 8));
 }
 
 /* Nested Levels - Dark Mode (Lighten 5% per level, then reverse) */
@@ -84,15 +84,15 @@
 
 /* Reversing Opacity */
 .theme-dark .toggle-bg-level-6 {
-    background-color: rgba(255, 255, 255, calc(var(--toggle-opacity-step) * 4));
+    background-color: rgba(255, 255, 255, calc(var(--toggle-opacity-step) * 6));
 }
 
 .theme-dark .toggle-bg-level-7 {
-    background-color: rgba(255, 255, 255, calc(var(--toggle-opacity-step) * 3));
+    background-color: rgba(255, 255, 255, calc(var(--toggle-opacity-step) * 7));
 }
 
 .theme-dark .toggle-bg-level-8 {
-    background-color: rgba(255, 255, 255, calc(var(--toggle-opacity-step) * 2));
+    background-color: rgba(255, 255, 255, calc(var(--toggle-opacity-step) * 8));
 }
 
 /* [PRD 3.2.2] Notion-like Triangle Style */
@@ -127,6 +127,24 @@
 .toggle-header-hash-widget {
     display: none;
     /* Hide the replaced hash text completely */
+}
+
+/* [PRD 3.1.3] 일반 토글 및 코드블록 토글의 접힘 표시(> 및 ...) 숨김
+ * -> 일반 토글과 코드블록 토글은 자체 삼각형(▶/▼)이 있으므로 옵시디언 기본 화살표(>)와 말줄임표(...) 숨김
+ * -> 단, 제목 토글(|>#)과 일반 옵시디언 헤딩은 네이티브 접기 화살표(>) 및 (...)를 유지하여 접고 펼 수 있게 함
+ */
+.toggle-standard-line .cm-foldPlaceholder,
+.toggle-codeblock-line .cm-foldPlaceholder {
+    display: none !important;
+}
+
+.toggle-standard-line .collapse-indicator,
+.toggle-standard-line .heading-collapse-indicator,
+.toggle-standard-line .cm-fold-indicator,
+.toggle-codeblock-line .collapse-indicator,
+.toggle-codeblock-line .heading-collapse-indicator,
+.toggle-codeblock-line .cm-fold-indicator {
+    display: none !important;
 }
 
 /* [NEW] End Tag Line Style (<|) */
@@ -192,24 +210,16 @@
     font-weight: bold;
 }
 
-/* [NEW] Copy Button Style */
+/* [PRD 3.1.3] 복사 버튼 스타일 (네이티브 코드블록 통일)
+ * -> 평소에는 네이티브 코드블록처럼 자연스럽게 보이고, 호버 시 강조됨 (가시성 제어는 TS 데코레이터 담당)
+ */
 .toggle-copy-btn {
     position: absolute;
     right: 8px;
     top: 4px;
-    /* Default State: Hidden (Eco-Friendly) */
-    opacity: 0;
-}
-
-/* [Fix] Always Visible Modifier */
-.toggle-copy-btn.always-visible {
-    opacity: 1 !important;
-
     background-color: transparent;
     cursor: pointer;
     z-index: 10;
-
-    /* Icon styling */
     color: var(--text-muted);
     width: 24px;
     height: 24px;
@@ -217,8 +227,12 @@
     align-items: center;
     justify-content: center;
     border-radius: 4px;
-    transition: opacity 0.1s ease;
-    /* Faster transition for responsive feel */
+    opacity: 0.8;
+    transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.toggle-copy-btn.always-visible {
+    opacity: 0.8;
 }
 
 .toggle-copy-btn svg {
@@ -226,19 +240,35 @@
     height: 16px;
 }
 
-/* [Eco-Friendly] Only show when parent line reads User Focus */
-/* CodeMirror adds .cm-activeLine to the line container where cursor is */
-.cm-activeLine .toggle-copy-btn {
-    opacity: 1;
-}
-
-/* Also show on hover for convenience */
-.cm-line:hover .toggle-copy-btn {
-    opacity: 1;
-}
-
-/* Hover on Button itself */
+/* Hover on Button itself -> 네이티브 코드블록처럼 또렷해지고 배경 강조 */
 .toggle-copy-btn:hover {
+    opacity: 1 !important;
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+/* [NEW] Language Badge Style (Native-like) */
+.toggle-lang-badge {
+    position: absolute;
+    right: 6px;
+    top: 6px;
+    padding: 2px 4px;
+
+    /* Font Styling */
+    font-size: 0.8em;
+    /* Slightly smaller */
+    /* [User Request] Pretty Serif Font (CMU Serif Style) */
+    font-family: "Times New Roman", "CMU Serif", "Georgia", serif;
+    color: var(--text-muted);
+
+    border-radius: 4px;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.toggle-lang-badge:hover {
     background-color: var(--background-modifier-hover);
     color: var(--text-normal);
 }

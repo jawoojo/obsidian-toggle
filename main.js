@@ -34,7 +34,7 @@ var import_view = require("@codemirror/view");
 var import_state = require("@codemirror/state");
 var import_language = require("@codemirror/language");
 var import_obsidian = require("obsidian");
-var START_TAG = "|> ";
+var START_TAG = "|>";
 var END_TAG = "<|";
 var ToggleWidget = class extends import_view.WidgetType {
   constructor(isFolded, foldStart, foldEnd, invisible = false, isCodeBlock = false) {
@@ -89,23 +89,30 @@ var ToggleWidget = class extends import_view.WidgetType {
   }
 };
 var CopyWidget = class extends import_view.WidgetType {
-  constructor(startLineNo, endLineNo, alwaysVisible = false) {
+  constructor(startLineNo, endLineNo, alwaysVisible = false, language = "") {
     super();
     this.startLineNo = startLineNo;
     this.endLineNo = endLineNo;
     this.alwaysVisible = alwaysVisible;
+    this.language = language;
   }
   toDOM(view) {
     const span = document.createElement("span");
-    span.className = "toggle-copy-btn";
-    if (this.alwaysVisible) {
-      span.classList.add("always-visible");
-    }
-    const iconInfo = (0, import_obsidian.getIcon)("copy");
-    if (iconInfo) {
-      span.appendChild(iconInfo);
+    if (this.language) {
+      span.className = "toggle-lang-badge";
+      span.textContent = this.language;
+      span.title = "Click to copy";
     } else {
-      span.textContent = "Copy";
+      span.className = "toggle-copy-btn";
+      if (this.alwaysVisible) {
+        span.classList.add("always-visible");
+      }
+      const iconInfo = (0, import_obsidian.getIcon)("copy");
+      if (iconInfo) {
+        span.appendChild(iconInfo);
+      } else {
+        span.textContent = "Copy";
+      }
     }
     span.onclick = (e) => {
       e.preventDefault();
@@ -170,7 +177,7 @@ var HeaderHashWidget = class extends import_view.WidgetType {
 function findMatchingEndLine(doc, startLineNo) {
   let stack = 1;
   for (let i = startLineNo + 1; i <= doc.lines; i++) {
-    const lineText = doc.line(i).text.trimStart();
+    const lineText = doc.line(i).text;
     if (lineText.startsWith(START_TAG)) {
       stack++;
     } else if (lineText.startsWith(END_TAG)) {
@@ -181,6 +188,22 @@ function findMatchingEndLine(doc, startLineNo) {
     }
   }
   return -1;
+}
+function isLineInsideToggle(state, lineNo) {
+  let stack = 0;
+  const minLine = Math.max(1, lineNo - 500);
+  for (let i = lineNo; i >= minLine; i--) {
+    const text = state.doc.line(i).text;
+    if (text.startsWith(END_TAG)) {
+      if (i !== lineNo)
+        stack++;
+    } else if (text.startsWith(START_TAG)) {
+      if (stack === 0)
+        return true;
+      stack--;
+    }
+  }
+  return false;
 }
 var notionFoldService = import_language.foldService.of((state, lineStart, lineEnd) => {
   const line = state.doc.lineAt(lineStart);
@@ -257,19 +280,21 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
         const hasOverlap = (state) => {
           for (const range of state.selection.ranges) {
             const line = state.doc.lineAt(range.head);
-            const text = line.text.trimStart();
+            const text = line.text;
             if (text.startsWith(START_TAG))
               return true;
-            if ((text.startsWith("```") || text.startsWith("~~~")) && /^(```|~~~).*>\s*$/.test(text))
+            if ((text.startsWith("```") || text.startsWith("~~~")) && /^(```|~~~).*>\s*$/.test(text.trimStart()))
               return true;
             if (text.startsWith(END_TAG))
+              return true;
+            if (isLineInsideToggle(state, line.number))
               return true;
           }
           return false;
         };
         const prevOverlap = hasOverlap(update.startState);
         const currOverlap = hasOverlap(update.state);
-        if (prevOverlap || currOverlap) {
+        if (prevOverlap !== currOverlap || currOverlap) {
           shouldUpdate = true;
         }
       }
@@ -314,14 +339,14 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
         if (currentLevel > 0) {
           const safeLevel = Math.min(currentLevel, 8);
           let classNames = `toggle-bg toggle-bg-level-${safeLevel}`;
-          if (trimmedText.startsWith(START_TAG)) {
+          if (text.startsWith(START_TAG)) {
             classNames += " toggle-round-top";
             try {
-              const contentAfter = trimmedText.slice(START_TAG.length);
-              const headerMatch = contentAfter.match(/^\s*(#{1,6})\s/);
+              const contentAfter = text.slice(START_TAG.length);
+              const headerMatch = contentAfter.match(/^\s*(#{1,6})(?:\s|$)/);
               if (headerMatch) {
                 const level = headerMatch[1].length;
-                classNames += ` cm-header cm-header-${level} HyperMD-header HyperMD-header-${level}`;
+                classNames += ` toggle-header-line cm-header cm-header-${level} HyperMD-header HyperMD-header-${level}`;
                 let isLineSelected = false;
                 for (const r of selection.ranges) {
                   if (r.to >= line.from && r.from <= line.to) {
@@ -330,8 +355,7 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
                   }
                 }
                 if (!isLineSelected) {
-                  const indentLen = text.length - trimmedText.length;
-                  const hashStart = line.from + indentLen + START_TAG.length + headerMatch.index;
+                  const hashStart = line.from + START_TAG.length + headerMatch.index;
                   const hashEnd = hashStart + headerMatch[0].length;
                   if (hashEnd <= line.to) {
                     decos.push({
@@ -344,11 +368,14 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
                     });
                   }
                 }
+              } else {
+                classNames += " toggle-standard-line";
               }
             } catch (e) {
+              classNames += " toggle-standard-line";
             }
           }
-          if (trimmedText.startsWith(END_TAG)) {
+          if (text.startsWith(END_TAG)) {
             classNames += " toggle-round-bot";
           }
           decos.push({
@@ -360,11 +387,20 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
           });
         }
         if (trimmedText.startsWith("```") || trimmedText.startsWith("~~~")) {
-          const isCodeBlockToggle = /^(```|~~~).*>\s*$/.test(trimmedText);
+          const match = trimmedText.match(/^(?:```|~~~)(.*?)>\s*$/);
+          const isCodeBlockToggle = !!match;
           if (!inCodeBlock && isCodeBlockToggle) {
+            decos.push({
+              from: line.from,
+              to: line.from,
+              deco: import_view.Decoration.line({
+                class: "toggle-codeblock-line"
+              })
+            });
             const indentLen = text.length - trimmedText.length;
             const rangeFrom = line.from + indentLen;
             const rangeTo = rangeFrom + trimmedText.length;
+            const language = match[1].trim();
             const endToken = trimmedText.startsWith("```") ? "```" : "~~~";
             let codeBlockEndLine = -1;
             for (let k = i + 1; k <= lineCount; k++) {
@@ -377,15 +413,23 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
             if (codeBlockEndLine !== -1) {
               const foldStart = line.to;
               const foldEnd = doc.line(codeBlockEndLine).to;
-              decos.push({
-                from: line.to,
-                to: line.to,
-                deco: import_view.Decoration.widget({
-                  widget: new CopyWidget(i, codeBlockEndLine, true),
-                  // [Fix] Always visible for Code Block
-                  side: 1
-                })
-              });
+              let isLineActive = false;
+              for (const r of selection.ranges) {
+                if (r.head >= line.from && r.head <= line.to) {
+                  isLineActive = true;
+                  break;
+                }
+              }
+              if (!isLineActive || !language) {
+                decos.push({
+                  from: line.to,
+                  to: line.to,
+                  deco: import_view.Decoration.widget({
+                    widget: new CopyWidget(i, codeBlockEndLine, true, language),
+                    side: 1
+                  })
+                });
+              }
               let isFolded = false;
               ranges.between(foldStart, foldEnd, (from, to) => {
                 if (from === foldStart && to === foldEnd)
@@ -416,10 +460,9 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
         }
         if (inCodeBlock)
           continue;
-        if (trimmedText.startsWith(START_TAG)) {
+        if (text.startsWith(START_TAG)) {
           runningStack++;
-          const indentLen = text.length - trimmedText.length;
-          const rangeFrom = line.from + indentLen;
+          const rangeFrom = line.from;
           const rangeTo = rangeFrom + START_TAG.length;
           let isSelected = false;
           for (const r of selection.ranges) {
@@ -428,8 +471,8 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
               break;
             }
           }
-          const contentAfter = trimmedText.slice(START_TAG.length);
-          const isHeader = /^\s*(#{1,6})\s/.test(contentAfter);
+          const contentAfter = text.slice(START_TAG.length);
+          const isHeader = /^\s*(#{1,6})(?:\s|$)/.test(contentAfter);
           if (!isSelected) {
             const endLineNo = findMatchingEndLine(doc, i);
             if (endLineNo !== -1) {
@@ -445,16 +488,15 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
                 to: rangeTo,
                 deco: import_view.Decoration.replace({
                   widget: new ToggleWidget(isFolded, foldStart, foldEnd, isHeader, false),
-                  // Pass isHeader as invisible flag, isCodeBlock = false
+                  // isHeader를 invisible 플래그로 전달, isCodeBlock = false
                   inclusive: true
                 })
               });
             }
           }
         }
-        if (trimmedText.startsWith(END_TAG)) {
-          const indentLen = text.length - trimmedText.length;
-          const rangeFrom = line.from + indentLen;
+        if (text.startsWith(END_TAG)) {
+          const rangeFrom = line.from;
           const rangeTo = rangeFrom + END_TAG.length;
           const isOrphan = runningStack === 0;
           if (!isOrphan) {
@@ -478,24 +520,50 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
             });
           }
         }
-        if (trimmedText.startsWith(START_TAG)) {
+        if (text.startsWith(START_TAG)) {
           const endLineNo = findMatchingEndLine(doc, i);
           if (endLineNo !== -1) {
-            decos.push({
-              from: line.to,
-              // Append to end of line
-              to: line.to,
-              deco: import_view.Decoration.widget({
-                widget: new CopyWidget(i, endLineNo),
-                side: 1
-              })
+            const foldStart = line.to;
+            const foldEnd = doc.line(endLineNo).to;
+            let isFolded = false;
+            ranges.between(foldStart, foldEnd, (from, to) => {
+              if (from === foldStart && to === foldEnd)
+                isFolded = true;
             });
+            const toggleFrom = line.from;
+            const toggleTo = doc.line(endLineNo).to;
+            let isEditing = false;
+            for (const r of selection.ranges) {
+              if (r.to >= toggleFrom && r.from <= toggleTo) {
+                isEditing = true;
+                break;
+              }
+            }
+            const shouldShowCopy = isFolded || !isEditing;
+            if (shouldShowCopy) {
+              decos.push({
+                from: line.to,
+                // 줄 끝에 추가
+                to: line.to,
+                deco: import_view.Decoration.widget({
+                  widget: new CopyWidget(i, endLineNo, true),
+                  side: 1
+                })
+              });
+            }
           }
         }
       }
       decos.sort((a, b) => {
+        var _a, _b;
         if (a.from !== b.from)
           return a.from - b.from;
+        const aIsLine = a.from === a.to && !!((_a = a.deco.spec) == null ? void 0 : _a.class);
+        const bIsLine = b.from === b.to && !!((_b = b.deco.spec) == null ? void 0 : _b.class);
+        if (aIsLine && !bIsLine)
+          return -1;
+        if (!aIsLine && bIsLine)
+          return 1;
         return 0;
       });
       const builder = new import_state.RangeSetBuilder();
@@ -509,8 +577,8 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
     decorations: (v) => v.decorations
   }
 );
-var autoCloseKeymap = import_state.Prec.highest(import_view.keymap.of([{
-  key: "Space",
+var instantToggleKeymap = import_state.Prec.highest(import_view.keymap.of([{
+  key: ">",
   run: (view) => {
     const state = view.state;
     const ranges = state.selection.ranges;
@@ -520,27 +588,33 @@ var autoCloseKeymap = import_state.Prec.highest(import_view.keymap.of([{
     if (!range.empty)
       return false;
     const pos = range.head;
-    const prevChars = state.doc.sliceString(pos - 2, pos);
-    if (prevChars === "|>") {
-      const insertText = " \n\n<|";
-      view.dispatch({
-        changes: { from: pos, insert: insertText },
-        selection: { anchor: pos + 1 }
-      });
-      return true;
-    }
-    return false;
+    const line = state.doc.lineAt(pos);
+    const lineText = line.text;
+    const prevChar = state.doc.sliceString(pos - 1, pos);
+    if (prevChar !== "|")
+      return false;
+    const textBefore = lineText.slice(0, pos - line.from);
+    if (textBefore !== "|")
+      return false;
+    const insertText = ">\n\n<|";
+    view.dispatch({
+      changes: { from: pos, insert: insertText },
+      selection: { anchor: pos + 1 },
+      // Position after ">" (Inside the title)
+      scrollIntoView: true
+    });
+    return true;
   }
 }]));
 var toggleExtension = [
   notionFoldService,
   togglePlugin,
-  autoCloseKeymap
+  instantToggleKeymap
 ];
 
 // reading_mode_processor.ts
 var import_obsidian2 = require("obsidian");
-var START_TAG2 = "|> ";
+var START_TAG2 = "|>";
 var END_TAG2 = "<|";
 function parseLevels(text) {
   const lines = text.split(/\r\n|\r|\n/);
@@ -550,9 +624,9 @@ function parseLevels(text) {
   const validRanges = [];
   for (let i = 0; i < lines.length; i++) {
     const lineText = lines[i];
-    if (lineText.trimStart().startsWith(START_TAG2)) {
+    if (lineText.startsWith(START_TAG2)) {
       openStack.push(i);
-    } else if (lineText.trimStart().startsWith(END_TAG2)) {
+    } else if (lineText.startsWith(END_TAG2)) {
       if (openStack.length > 0) {
         const start = openStack.pop();
         validRanges.push({ start, end: i });
@@ -603,15 +677,19 @@ async function readingModeProcessor(el, ctx) {
       if (roundType === "bot")
         child.classList.add("toggle-round-bot");
     }
-    const trimmedSource = lineText.trimStart();
-    if (trimmedSource.startsWith(START_TAG2)) {
-      const contentAfter = trimmedSource.slice(START_TAG2.length);
-      const headerMatch = contentAfter.match(/^\s*(#{1,6})\s/);
+    if (lineText.startsWith(START_TAG2)) {
+      const contentAfter = lineText.slice(START_TAG2.length);
+      const headerMatch = contentAfter.match(/^\s*(#{1,6})(?:\s|$)/);
       const isHeader = !!headerMatch;
+      if (isHeader) {
+        child.classList.add("toggle-header-line");
+      } else {
+        child.classList.add("toggle-standard-line");
+      }
       const walker = document.createTreeWalker(child, NodeFilter.SHOW_TEXT);
       const firstTextNode = walker.nextNode();
       if (firstTextNode && firstTextNode.nodeValue) {
-        if (firstTextNode.nodeValue.trimStart().startsWith("|>")) {
+        if (firstTextNode.nodeValue.startsWith("|>")) {
           const originalVal = firstTextNode.nodeValue;
           const triggerIdx = originalVal.indexOf("|>");
           if (triggerIdx !== -1) {
@@ -680,7 +758,7 @@ async function readingModeProcessor(el, ctx) {
 function findMatchingEndLine2(levels, lines, startLine) {
   let stack = 1;
   for (let i = startLine + 1; i < lines.length; i++) {
-    const txt = lines[i].trimStart();
+    const txt = lines[i];
     if (txt.startsWith(START_TAG2))
       stack++;
     else if (txt.startsWith(END_TAG2)) {
@@ -693,8 +771,13 @@ function findMatchingEndLine2(levels, lines, startLine) {
 }
 
 // main.ts
+var DEFAULT_SETTINGS = {
+  toggleCommandName: "Insert Toggle",
+  codeBlockCommandName: "Insert Code Block Toggle"
+};
 var TogglePlugin = class extends import_obsidian3.Plugin {
-  onload() {
+  async onload() {
+    await this.loadSettings();
     this.registerEditorExtension(toggleExtension);
     this.registerMarkdownPostProcessor(async (el, ctx) => {
       try {
@@ -703,33 +786,34 @@ var TogglePlugin = class extends import_obsidian3.Plugin {
         console.error("Toggle reading mode error:", error);
       }
     });
+    this.addSettingTab(new NotionToggleSettingsTab(this.app, this));
     this.addCommand({
       id: "insert-toggle",
-      name: "Insert",
-      // [Refactor] Removed 'Toggle' (Redundant)
+      name: this.settings.toggleCommandName,
+      // 사용자 정의 이름 사용
       editorCallback: (editor) => {
         const selection = editor.getSelection();
         if (selection) {
-          editor.replaceSelection(`|> 
+          editor.replaceSelection(`|>
 ${selection}
 <|`);
         } else {
-          const start = "|> ";
+          const start = "|>";
           const body = "\n\n";
           const end = "<|";
           const cursorBefore = editor.getCursor();
           editor.replaceSelection(start + body + end);
           editor.setCursor({
             line: cursorBefore.line,
-            ch: cursorBefore.ch + 3
+            ch: cursorBefore.ch + 2
           });
         }
       }
     });
     this.addCommand({
       id: "insert-code-toggle",
-      name: "Insert code block",
-      // [Refactor] Sentence case
+      name: this.settings.codeBlockCommandName,
+      // 사용자 정의 이름 사용
       editorCallback: (editor) => {
         const selection = editor.getSelection();
         if (selection) {
@@ -751,5 +835,81 @@ ${selection}
     });
   }
   onunload() {
+  }
+  async loadSettings() {
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+  }
+  async saveSettings() {
+    await this.saveData(this.settings);
+  }
+};
+var NotionToggleSettingsTab = class extends import_obsidian3.PluginSettingTab {
+  constructor(app2, plugin) {
+    super(app2, plugin);
+    this.plugin = plugin;
+  }
+  display() {
+    const { containerEl } = this;
+    containerEl.empty();
+    const bannerContainer = containerEl.createDiv();
+    bannerContainer.style.marginBottom = "20px";
+    bannerContainer.style.textAlign = "center";
+    const link = bannerContainer.createEl("a", {
+      href: "https://www.buymeacoffee.com/jawoojo"
+    });
+    const img = link.createEl("img", {
+      attr: {
+        src: "https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png",
+        alt: "Buy Me A Coffee"
+      }
+    });
+    img.style.width = "200px";
+    img.style.height = "auto";
+    containerEl.createEl("h2", { text: "Notion Style Toggle Settings" });
+    new import_obsidian3.Setting(containerEl).setName("Insert Toggle Command Name").setDesc('Custom name for the "Insert Toggle" command (Requires restart to apply)').addText((text) => text.setPlaceholder("Insert Toggle").setValue(this.plugin.settings.toggleCommandName).onChange(async (value) => {
+      this.plugin.settings.toggleCommandName = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian3.Setting(containerEl).setName("Insert Code Block Toggle Command Name").setDesc('Custom name for the "Insert Code Block Toggle" command (Requires restart to apply)').addText((text) => text.setPlaceholder("Insert Code Block Toggle").setValue(this.plugin.settings.codeBlockCommandName).onChange(async (value) => {
+      this.plugin.settings.codeBlockCommandName = value;
+      await this.plugin.saveSettings();
+    }));
+    const guideHeader = containerEl.createEl("h3", { text: "Usage Guide (Syntax)" });
+    guideHeader.style.marginTop = "30px";
+    const guideContainer = containerEl.createDiv();
+    guideContainer.style.color = "var(--text-muted)";
+    guideContainer.style.fontSize = "0.9em";
+    const createSyntaxBlock = (title, code, note) => {
+      const p = guideContainer.createEl("p", { text: title });
+      p.style.fontWeight = "bold";
+      p.style.marginTop = "15px";
+      p.style.marginBottom = "5px";
+      const pre = guideContainer.createEl("pre", { text: code });
+      pre.style.backgroundColor = "var(--background-secondary)";
+      pre.style.padding = "10px";
+      pre.style.borderRadius = "5px";
+      pre.style.fontFamily = "var(--font-monospace)";
+      pre.style.margin = "0";
+      if (note) {
+        const div = guideContainer.createEl("div", { text: note });
+        div.style.marginTop = "4px";
+        div.style.fontSize = "0.85em";
+        div.style.color = "var(--text-faint)";
+      }
+    };
+    createSyntaxBlock(
+      "1. Basic Toggle",
+      "|>Toggle Title\n  ... content ... \n<|"
+    );
+    createSyntaxBlock(
+      "2. Header Toggle (Foldable Headers)",
+      "|># Header 1",
+      "(Hides the triangle and uses native header folding)"
+    );
+    createSyntaxBlock(
+      "3. Code Block Toggle",
+      "```> \n// or \n```python>",
+      "(Ends with ``` as usual)"
+    );
   }
 };
