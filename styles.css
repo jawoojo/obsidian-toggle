@@ -26,9 +26,10 @@
 }
 
 /* [PRD 2.4.1] 코드블록 토글 접힘 시 아래쪽 모서리 라운딩 */
+/* -> 옵시디언 네이티브 코드블록 곡률(--code-radius)과 100% 일치, 미정의 시 사용자 요청값 3px 적용 */
 .toggle-codeblock-line.toggle-round-bot {
-    border-bottom-left-radius: var(--radius-m, var(--code-radius, 5px)) !important;
-    border-bottom-right-radius: var(--radius-m, var(--code-radius, 5px)) !important;
+    border-bottom-left-radius: var(--code-radius, var(--radius-s, 3px)) !important;
+    border-bottom-right-radius: var(--code-radius, var(--radius-s, 3px)) !important;
 }
 
 /* Cleanup: Complex sibling selectors removed */
