@@ -466,9 +466,16 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
           const rangeTo = rangeFrom + START_TAG.length;
           let isSelected = false;
           for (const r of selection.ranges) {
-            if (r.to >= rangeFrom && r.from <= rangeTo) {
-              isSelected = true;
-              break;
+            if (r.empty) {
+              if (r.head === rangeFrom + 1) {
+                isSelected = true;
+                break;
+              }
+            } else {
+              if (r.from < rangeTo && r.to > rangeFrom) {
+                isSelected = true;
+                break;
+              }
             }
           }
           const contentAfter = text.slice(START_TAG.length);

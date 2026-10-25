@@ -56,3 +56,19 @@ If you find this plugin helpful, consider buying me a coffee!
 ## License
 
 MIT
+
+---
+
+## Release Notes
+
+### [1.1.0]
+
+- **Cleaner Fold UI**: 
+  - Removed duplicate Obsidian fold arrows (`>`) and ellipsis placeholders (`...`) from standard and code block toggles, leaving only the clean triangle icon (`▶`/`▼`).
+  - Native fold controls remain intact for header toggles (`|> #`).
+- **Native-Like Copy Button**: 
+  - Matched the copy button UX with Obsidian's native code blocks: visible by default, highlights on hover, and automatically hides while editing/typing inside the toggle.
+- **Accidental Click Protection**: 
+  - Clicking right next to the triangle icon (left or right) no longer reveals the raw `|>` text. The icon remains stable unless you explicitly place the cursor between `|` and `>` or drag-select.
+- **Strict Trigger Precision**: 
+  - Auto-completion and toggle rendering now strictly trigger only when `|>` is placed at the exact start of a line without preceding whitespaces, preventing unintended triggers.
