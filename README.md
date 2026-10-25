@@ -61,14 +61,11 @@ MIT
 
 ## Release Notes
 
-### [1.1.0]
+### [1.1.1]
 
-- **Cleaner Fold UI**: 
-  - Removed duplicate Obsidian fold arrows (`>`) and ellipsis placeholders (`...`) from standard and code block toggles, leaving only the clean triangle icon (`▶`/`▼`).
-  - Native fold controls remain intact for header toggles (`|> #`).
-- **Native-Like Copy Button**: 
-  - Matched the copy button UX with Obsidian's native code blocks: visible by default, highlights on hover, and automatically hides while editing/typing inside the toggle.
-- **Accidental Click Protection**: 
-  - Clicking right next to the triangle icon (left or right) no longer reveals the raw `|>` text. The icon remains stable unless you explicitly place the cursor between `|` and `>` or drag-select.
-- **Strict Trigger Precision**: 
-  - Auto-completion and toggle rendering now strictly trigger only when `|>` is placed at the exact start of a line without preceding whitespaces, preventing unintended triggers.
+- **Full 4-Corner Rounding on Fold**: When toggles (standard, header, or code block) are folded, the bottom corners are now smoothly rounded alongside the top corners for a complete capsule/card appearance.
+- **Accidental Click Protection**: Clicking right next to the triangle icon (in both standard toggles `|>` and code block toggles ` ```> `) no longer reveals raw syntax. It stays intact unless explicitly focused inside.
+- **Cleaner Fold UI**: Removed duplicate Obsidian fold arrows (`>`) and ellipsis placeholders (`...`) from standard and code block toggles, keeping only the clean triangle icon (`▶`/`▼`).
+- **Native-Like Copy Button**: Matched the copy button UX with Obsidian's native code blocks: visible by default, highlights on hover, and automatically hides while editing inside the toggle.
+- **Strict Trigger Precision**: Auto-completion and toggle rendering strictly require `|>` at the exact start of the line without preceding whitespaces.
+
