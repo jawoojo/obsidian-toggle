@@ -341,6 +341,19 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
           let classNames = `toggle-bg toggle-bg-level-${safeLevel}`;
           if (text.startsWith(START_TAG)) {
             classNames += " toggle-round-top";
+            const endLineNo = findMatchingEndLine(doc, i);
+            if (endLineNo !== -1) {
+              const foldStart = line.to;
+              const foldEnd = doc.line(endLineNo).to;
+              let isFolded = false;
+              ranges.between(foldStart, foldEnd, (from, to) => {
+                if (from === foldStart && to === foldEnd)
+                  isFolded = true;
+              });
+              if (isFolded) {
+                classNames += " toggle-round-bot";
+              }
+            }
             try {
               const contentAfter = text.slice(START_TAG.length);
               const headerMatch = contentAfter.match(/^\s*(#{1,6})(?:\s|$)/);
@@ -390,16 +403,6 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
           const match = trimmedText.match(/^(?:```|~~~)(.*?)>\s*$/);
           const isCodeBlockToggle = !!match;
           if (!inCodeBlock && isCodeBlockToggle) {
-            decos.push({
-              from: line.from,
-              to: line.from,
-              deco: import_view.Decoration.line({
-                class: "toggle-codeblock-line"
-              })
-            });
-            const indentLen = text.length - trimmedText.length;
-            const rangeFrom = line.from + indentLen;
-            const rangeTo = rangeFrom + trimmedText.length;
             const language = match[1].trim();
             const endToken = trimmedText.startsWith("```") ? "```" : "~~~";
             let codeBlockEndLine = -1;
@@ -410,6 +413,29 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
                 break;
               }
             }
+            let isFolded = false;
+            if (codeBlockEndLine !== -1) {
+              const foldStart = line.to;
+              const foldEnd = doc.line(codeBlockEndLine).to;
+              ranges.between(foldStart, foldEnd, (from, to) => {
+                if (from === foldStart && to === foldEnd)
+                  isFolded = true;
+              });
+            }
+            let codeBlockClass = "toggle-codeblock-line";
+            if (isFolded) {
+              codeBlockClass += " toggle-round-bot";
+            }
+            decos.push({
+              from: line.from,
+              to: line.from,
+              deco: import_view.Decoration.line({
+                class: codeBlockClass
+              })
+            });
+            const indentLen = text.length - trimmedText.length;
+            const rangeFrom = line.from + indentLen;
+            const rangeTo = rangeFrom + trimmedText.length;
             if (codeBlockEndLine !== -1) {
               const foldStart = line.to;
               const foldEnd = doc.line(codeBlockEndLine).to;
@@ -430,16 +456,18 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
                   })
                 });
               }
-              let isFolded = false;
-              ranges.between(foldStart, foldEnd, (from, to) => {
-                if (from === foldStart && to === foldEnd)
-                  isFolded = true;
-              });
               let isSelected = false;
               for (const r of selection.ranges) {
-                if (r.to >= rangeFrom && r.from <= rangeTo) {
-                  isSelected = true;
-                  break;
+                if (r.empty) {
+                  if (r.head > rangeFrom && r.head < rangeTo) {
+                    isSelected = true;
+                    break;
+                  }
+                } else {
+                  if (r.from < rangeTo && r.to > rangeFrom) {
+                    isSelected = true;
+                    break;
+                  }
                 }
               }
               if (!isSelected) {

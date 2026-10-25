@@ -25,6 +25,12 @@
     border-bottom-right-radius: 5px !important;
 }
 
+/* [PRD 2.4.1] 코드블록 토글 접힘 시 아래쪽 모서리 라운딩 */
+.toggle-codeblock-line.toggle-round-bot {
+    border-bottom-left-radius: var(--radius-m, var(--code-radius, 5px)) !important;
+    border-bottom-right-radius: var(--radius-m, var(--code-radius, 5px)) !important;
+}
+
 /* Cleanup: Complex sibling selectors removed */
 
 /* Nested Levels - Light Mode (Darken 5% per level) */
