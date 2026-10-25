@@ -61,7 +61,7 @@ MIT
 
 ## Release Notes
 
-### [1.1.1]
+### [1.1.2]
 
 - **Full 4-Corner Rounding on Fold**: When toggles (standard, header, or code block) are folded, the bottom corners are now smoothly rounded alongside the top corners for a complete capsule/card appearance.
 - **Accidental Click Protection**: Clicking right next to the triangle icon (in both standard toggles `|>` and code block toggles ` ```> `) no longer reveals raw syntax. It stays intact unless explicitly focused inside.
