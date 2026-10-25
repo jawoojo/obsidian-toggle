@@ -3,10 +3,10 @@
 A premium, **Notion-style toggle plugin** for Obsidian. 
 The `|>` syntax is automatically rendered as a **clickable triangle icon (▶)**, allowing you to fold and unfold content with a single click.
 
-### 1. 접히기 전 (Expanded)
+### 1. Expanded
 ![Toggle Expanded](https://github.com/user-attachments/assets/a08f053d-034d-427c-8392-23a683525dfe)
 
-### 2. 접힌 후 (Folded)
+### 2. Folded
 ![Toggle Folded](https://github.com/user-attachments/assets/137b493d-2979-480e-9a9d-7a6996fc7757)
 
 ## Features
