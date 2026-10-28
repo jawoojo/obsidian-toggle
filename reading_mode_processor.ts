@@ -153,7 +153,7 @@ export async function readingModeProcessor(el: HTMLElement, ctx: MarkdownPostPro
                         if (!isHeader) {
                             const triangle = createSpan({
                                 cls: "toggle-widget",
-                                text: "▼"
+                                text: "▶"
                             });
                             // Default open in reading mode?
                             // In Reading mode, everything is static. We can't easily toggle state.

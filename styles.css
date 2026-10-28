@@ -113,7 +113,9 @@
     /* User preferred size */
     font-family: system-ui;
     /* [Fix] The "Magic Word" for OS Default Font */
-    transition: transform 0.2s ease;
+    transform-origin: center center;
+    transform: rotate(90deg); /* [PRD 3.2.2] 기본 펼침 상태: 아래(▼)를 향함 */
+    transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), color 0.15s ease;
     vertical-align: middle;
     user-select: none;
     margin-right: 10px;
@@ -122,6 +124,11 @@
     /* [Fix] Symmetric Spacing (User Request) */
     cursor: pointer;
     /* [Refactor] Moved from JS */
+}
+
+/* [PRD 3.2.2] 접힘 상태: 오른쪽(▶)을 향함 -> 부드럽게 90도 회전 애니메이션 */
+.toggle-widget.is-folded {
+    transform: rotate(0deg);
 }
 
 /* [Fix] Code Block Toggle: No Extra Left Margin */

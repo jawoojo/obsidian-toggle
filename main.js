@@ -45,6 +45,9 @@ var ToggleWidget = class extends import_view.WidgetType {
     this.invisible = invisible;
     this.isCodeBlock = isCodeBlock;
   }
+  eq(other) {
+    return this.isFolded === other.isFolded && this.foldStart === other.foldStart && this.foldEnd === other.foldEnd && this.invisible === other.invisible && this.isCodeBlock === other.isCodeBlock;
+  }
   toDOM(view) {
     const span = createSpan({ cls: "toggle-widget" });
     if (this.isCodeBlock) {
@@ -53,35 +56,69 @@ var ToggleWidget = class extends import_view.WidgetType {
     if (this.invisible) {
       span.classList.add("u-hidden");
     } else {
-      span.textContent = this.isFolded ? "\u25B6" : "\u25BC";
-      span.onclick = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (this.isFolded) {
-          view.dispatch({
-            effects: import_language.unfoldEffect.of({ from: this.foldStart, to: this.foldEnd })
-          });
-          window.setTimeout(() => {
-            const pos = this.foldEnd;
-            view.dispatch({
-              changes: { from: pos, insert: " " },
-              annotations: import_state.Transaction.addToHistory.of(false)
-            });
-            window.setTimeout(() => {
-              view.dispatch({
-                changes: { from: pos, to: pos + 1, insert: "" },
-                annotations: import_state.Transaction.addToHistory.of(false)
-              });
-            }, 5);
-          }, 5);
-        } else {
-          view.dispatch({
-            effects: import_language.foldEffect.of({ from: this.foldStart, to: this.foldEnd })
-          });
-        }
-      };
+      span.textContent = "\u25B6";
+      if (this.isFolded) {
+        span.classList.add("is-folded");
+      }
+      this.setupClickHandler(span, view);
     }
     return span;
+  }
+  // [PRD 3.1.1] 부드러운 CSS 회전 애니메이션을 위해 DOM 재성성 대신 클래스 토글 및 핸들러 갱신
+  updateDOM(dom, view) {
+    if (this.invisible) {
+      dom.classList.add("u-hidden");
+    } else {
+      dom.classList.remove("u-hidden");
+    }
+    if (this.isCodeBlock) {
+      dom.classList.add("toggle-codeblock");
+    } else {
+      dom.classList.remove("toggle-codeblock");
+    }
+    if (this.isFolded) {
+      dom.classList.add("is-folded");
+    } else {
+      dom.classList.remove("is-folded");
+    }
+    this.setupClickHandler(dom, view);
+    return true;
+  }
+  // [PRD 3.1.1] 클릭 순간의 실제 에디터 접힘 상태(foldedRanges)를 실시간 확인하여 정확한 fold/unfold 수행
+  setupClickHandler(span, view) {
+    span.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const ranges = (0, import_language.foldedRanges)(view.state);
+      let isCurrentlyFolded = false;
+      ranges.between(this.foldStart, this.foldEnd, (from, to) => {
+        if (from === this.foldStart && to === this.foldEnd) {
+          isCurrentlyFolded = true;
+        }
+      });
+      if (isCurrentlyFolded) {
+        view.dispatch({
+          effects: import_language.unfoldEffect.of({ from: this.foldStart, to: this.foldEnd })
+        });
+        window.setTimeout(() => {
+          const pos = this.foldEnd;
+          view.dispatch({
+            changes: { from: pos, insert: " " },
+            annotations: import_state.Transaction.addToHistory.of(false)
+          });
+          window.setTimeout(() => {
+            view.dispatch({
+              changes: { from: pos, to: pos + 1, insert: "" },
+              annotations: import_state.Transaction.addToHistory.of(false)
+            });
+          }, 5);
+        }, 5);
+      } else {
+        view.dispatch({
+          effects: import_language.foldEffect.of({ from: this.foldStart, to: this.foldEnd })
+        });
+      }
+    };
   }
   ignoreEvent() {
     return true;
@@ -741,7 +778,7 @@ async function readingModeProcessor(el, ctx) {
             if (!isHeader) {
               const triangle = createSpan({
                 cls: "toggle-widget",
-                text: "\u25BC"
+                text: "\u25B6"
               });
               if (firstTextNode.parentNode) {
                 firstTextNode.parentNode.insertBefore(triangle, firstTextNode.nextSibling);
