@@ -88,23 +88,33 @@ var ToggleWidget = class extends import_view.WidgetType {
   }
 };
 var CopyWidget = class extends import_view.WidgetType {
-  constructor(startLineNo, endLineNo, alwaysVisible = false, language = "") {
+  constructor(startLineNo, endLineNo, alwaysVisible = false, language = "", isFolded = false) {
     super();
     this.startLineNo = startLineNo;
     this.endLineNo = endLineNo;
     this.alwaysVisible = alwaysVisible;
     this.language = language;
+    this.isFolded = isFolded;
+  }
+  eq(other) {
+    return this.startLineNo === other.startLineNo && this.endLineNo === other.endLineNo && this.alwaysVisible === other.alwaysVisible && this.language === other.language && this.isFolded === other.isFolded;
   }
   toDOM(view) {
     const span = createSpan();
     if (this.language) {
       span.className = "toggle-lang-badge";
+      if (this.isFolded) {
+        span.classList.add("is-folded");
+      }
       span.textContent = this.language;
       span.title = "Click to copy";
     } else {
       span.className = "toggle-copy-btn";
       if (this.alwaysVisible) {
         span.classList.add("always-visible");
+      }
+      if (this.isFolded) {
+        span.classList.add("is-folded");
       }
       const iconInfo = (0, import_obsidian.getIcon)("copy");
       if (iconInfo) {
@@ -348,7 +358,7 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
                   isFolded = true;
               });
               if (isFolded) {
-                classNames += " toggle-round-bot";
+                classNames += " toggle-round-bot toggle-folded";
               }
             }
             try {
@@ -421,7 +431,7 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
             }
             let codeBlockClass = "toggle-codeblock-line";
             if (isFolded) {
-              codeBlockClass += " toggle-round-bot";
+              codeBlockClass += " toggle-round-bot toggle-folded";
             }
             decos.push({
               from: line.from,
@@ -448,7 +458,7 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
                   from: line.to,
                   to: line.to,
                   deco: import_view.Decoration.widget({
-                    widget: new CopyWidget(i, codeBlockEndLine, true, language),
+                    widget: new CopyWidget(i, codeBlockEndLine, true, language, isFolded),
                     side: 1
                   })
                 });
@@ -578,7 +588,7 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
                 // 줄 끝에 추가
                 to: line.to,
                 deco: import_view.Decoration.widget({
-                  widget: new CopyWidget(i, endLineNo, true),
+                  widget: new CopyWidget(i, endLineNo, true, "", isFolded),
                   side: 1
                 })
               });

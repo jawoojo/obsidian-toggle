@@ -91,15 +91,25 @@ class ToggleWidget extends WidgetType {
     ignoreEvent(): boolean { return true; }
 }
 
-// [PRD 예시] 복사 위젯 (우상단)
+// [PRD 3.1.3] 복사 위젯 (우상단)
+// -> 접힘 상태(isFolded)를 받아 접혔을 때는 크기를 줄이고 한 줄 높이 중앙에 정렬
 class CopyWidget extends WidgetType {
     constructor(
         readonly startLineNo: number,
         readonly endLineNo: number,
         readonly alwaysVisible: boolean = false,
-        readonly language: string = "" // [New] 언어 라벨 (예: "python")
+        readonly language: string = "", // [New] 언어 라벨 (예: "python")
+        readonly isFolded: boolean = false // [PRD 3.1.3] 접힘 상태 (컴팩트 복사 버튼 스타일 적용용)
     ) {
         super();
+    }
+
+    eq(other: CopyWidget): boolean {
+        return this.startLineNo === other.startLineNo &&
+            this.endLineNo === other.endLineNo &&
+            this.alwaysVisible === other.alwaysVisible &&
+            this.language === other.language &&
+            this.isFolded === other.isFolded;
     }
 
     toDOM(view: EditorView): HTMLElement {
@@ -108,12 +118,18 @@ class CopyWidget extends WidgetType {
         // [New] 언어 뱃지 스타일링 분기
         if (this.language) {
             span.className = "toggle-lang-badge"; // 네모난 뱃지 스타일
+            if (this.isFolded) {
+                span.classList.add("is-folded");
+            }
             span.textContent = this.language;
             span.title = "Click to copy"; // 툴팁 추가
         } else {
             span.className = "toggle-copy-btn";
             if (this.alwaysVisible) {
                 span.classList.add("always-visible");
+            }
+            if (this.isFolded) {
+                span.classList.add("is-folded");
             }
 
             // Obsidian 네이티브 아이콘 사용
@@ -453,7 +469,7 @@ const togglePlugin = ViewPlugin.fromClass(
                                 if (from === foldStart && to === foldEnd) isFolded = true;
                             });
                             if (isFolded) {
-                                classNames += " toggle-round-bot";
+                                classNames += " toggle-round-bot toggle-folded";
                             }
                         }
 
@@ -563,7 +579,7 @@ const togglePlugin = ViewPlugin.fromClass(
                         // [PRD 2.4.1] 접힘 상태일 때 아래쪽 모서리도 둥글게(toggle-round-bot) 처리
                         let codeBlockClass = "toggle-codeblock-line";
                         if (isFolded) {
-                            codeBlockClass += " toggle-round-bot";
+                            codeBlockClass += " toggle-round-bot toggle-folded";
                         }
 
                         decos.push({
@@ -599,7 +615,7 @@ const togglePlugin = ViewPlugin.fromClass(
                                     from: line.to,
                                     to: line.to,
                                     deco: Decoration.widget({
-                                        widget: new CopyWidget(i, codeBlockEndLine, true, language),
+                                        widget: new CopyWidget(i, codeBlockEndLine, true, language, isFolded),
                                         side: 1
                                     })
                                 });
@@ -768,7 +784,7 @@ const togglePlugin = ViewPlugin.fromClass(
                                 from: line.to, // 줄 끝에 추가
                                 to: line.to,
                                 deco: Decoration.widget({
-                                    widget: new CopyWidget(i, endLineNo, true),
+                                    widget: new CopyWidget(i, endLineNo, true, "", isFolded),
                                     side: 1
                                 })
                             });
