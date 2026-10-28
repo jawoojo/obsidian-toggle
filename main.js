@@ -212,6 +212,16 @@ function isLineInsideToggle(state, lineNo) {
   }
   return false;
 }
+function isLineInsideCodeBlockToggle(state, lineNo) {
+  const minLine = Math.max(1, lineNo - 300);
+  for (let i = lineNo; i >= minLine; i--) {
+    const text = state.doc.line(i).text.trimStart();
+    if (text.startsWith("```") || text.startsWith("~~~")) {
+      return /^(?:```|~~~).*>\s*$/.test(text);
+    }
+  }
+  return false;
+}
 var notionFoldService = import_language.foldService.of((state, lineStart, lineEnd) => {
   const line = state.doc.lineAt(lineStart);
   const text = line.text;
@@ -295,6 +305,8 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
             if (text.startsWith(END_TAG))
               return true;
             if (isLineInsideToggle(state, line.number))
+              return true;
+            if (isLineInsideCodeBlockToggle(state, line.number))
               return true;
           }
           return false;
@@ -446,14 +458,17 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
             if (codeBlockEndLine !== -1) {
               const foldStart = line.to;
               const foldEnd = doc.line(codeBlockEndLine).to;
-              let isLineActive = false;
+              const codeBlockFrom = line.from;
+              const codeBlockTo = doc.line(codeBlockEndLine).to;
+              let isEditingCodeBlock = false;
               for (const r of selection.ranges) {
-                if (r.head >= line.from && r.head <= line.to) {
-                  isLineActive = true;
+                if (r.to >= codeBlockFrom && r.from <= codeBlockTo) {
+                  isEditingCodeBlock = true;
                   break;
                 }
               }
-              if (!isLineActive || !language) {
+              const shouldShowCodeBlockCopy = isFolded || !isEditingCodeBlock;
+              if (shouldShowCodeBlockCopy) {
                 decos.push({
                   from: line.to,
                   to: line.to,

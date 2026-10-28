@@ -250,6 +250,19 @@ function isLineInsideToggle(state: EditorState, lineNo: number): boolean {
     return false;
 }
 
+// [PRD 3.1.3] 특정 줄이 코드블록 토글 내부에 속하는지 검사
+// -> 위쪽으로 스캔하여 가장 가까운 펜스가 코드블록 토글 시작(```> 등)인지 확인 (Eco-Friendly)
+function isLineInsideCodeBlockToggle(state: EditorState, lineNo: number): boolean {
+    const minLine = Math.max(1, lineNo - 300);
+    for (let i = lineNo; i >= minLine; i--) {
+        const text = state.doc.line(i).text.trimStart();
+        if (text.startsWith("```") || text.startsWith("~~~")) {
+            return /^(?:```|~~~).*>\s*$/.test(text);
+        }
+    }
+    return false;
+}
+
 // 1. 접기 서비스 (Fold Service) - 범위 제한 헤더 지원 강화
 const notionFoldService = foldService.of((state: EditorState, lineStart: number, lineEnd: number) => {
     const line = state.doc.lineAt(lineStart);
@@ -382,6 +395,8 @@ const togglePlugin = ViewPlugin.fromClass(
                         if (text.startsWith(END_TAG)) return true;
                         // 토글 내부 편집/작성 감지 -> 복사 버튼 실시간 표시/숨김 반응
                         if (isLineInsideToggle(state, line.number)) return true;
+                        // [PRD 3.1.3] 코드블록 토글 내부 편집/작성 감지 -> 복사 버튼 실시간 표시/숨김 반응
+                        if (isLineInsideCodeBlockToggle(state, line.number)) return true;
                     }
                     return false;
                 };
@@ -599,18 +614,24 @@ const togglePlugin = ViewPlugin.fromClass(
                             const foldStart = line.to;
                             const foldEnd = doc.line(codeBlockEndLine).to;
 
-                            // [New Feature] 코드 블록 토글용 복사 버튼 추가
-                            // 언어(language)가 있으면 전달 -> 뱃지로 렌더링됨
-                            // [Fix] Ghost Text: 편집 중인 줄(커서가 있는 줄)에는 표시하지 않음
-                            let isLineActive = false;
+                            // [PRD 3.1.3] 코드 블록 토글용 복사 버튼: 네이티브 코드블록 및 일반 토글과 동일한 동작
+                            // -> 평소(접힘/펼침)에는 보이고, 코드블록 토글 내부(시작줄~닫는줄)를 편집(작성)할 때는 숨김
+                            const codeBlockFrom = line.from;
+                            const codeBlockTo = doc.line(codeBlockEndLine).to;
+
+                            let isEditingCodeBlock = false;
                             for (const r of selection.ranges) {
-                                if (r.head >= line.from && r.head <= line.to) {
-                                    isLineActive = true;
+                                if (r.to >= codeBlockFrom && r.from <= codeBlockTo) {
+                                    isEditingCodeBlock = true;
                                     break;
                                 }
                             }
 
-                            if (!isLineActive || !language) { // 언어가 없으면(아이콘) 항상 표시(CSS 제어), 언어가 있으면 활성 상태 아닐때만 표시
+                            // 접혀있을 때는 항상 표시(접힌 상태에서도 복사 가능),
+                            // 펼쳐져 있을 때는 내부를 편집(작성) 중이 아닐 때만 표시
+                            const shouldShowCodeBlockCopy = isFolded || !isEditingCodeBlock;
+
+                            if (shouldShowCodeBlockCopy) {
                                 decos.push({
                                     from: line.to,
                                     to: line.to,
