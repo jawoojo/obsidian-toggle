@@ -91,7 +91,7 @@ export default class TogglePlugin extends Plugin {
     }
 
     async loadSettings() {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, (await this.loadData()) as NotionToggleSettings | null);
     }
 
     async saveSettings() {
@@ -114,32 +114,29 @@ class NotionToggleSettingsTab extends PluginSettingTab {
         containerEl.empty();
 
         // [PRD 2.6.3] Donation Banner
-        const bannerContainer = containerEl.createDiv();
-        bannerContainer.style.marginBottom = "20px";
-        bannerContainer.style.textAlign = "center"; // Center align for better look
+        const bannerContainer = containerEl.createDiv({ cls: 'toggle-settings-banner' });
 
         const link = bannerContainer.createEl('a', {
             href: 'https://www.buymeacoffee.com/jawoojo'
         });
 
-        const img = link.createEl('img', {
+        link.createEl('img', {
+            cls: 'toggle-settings-banner-img',
             attr: {
                 src: 'https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png',
                 alt: 'Buy Me A Coffee'
             }
         });
 
-        // "너무 크지 않게" -> 200px width
-        img.style.width = "200px";
-        img.style.height = "auto";
-
-        containerEl.createEl('h2', { text: 'Notion Style Toggle Settings' });
+        new Setting(containerEl)
+            .setName('Commands')
+            .setHeading();
 
         new Setting(containerEl)
-            .setName('Insert Toggle Command Name')
-            .setDesc('Custom name for the "Insert Toggle" command (Requires restart to apply)')
+            .setName('Insert toggle command name')
+            .setDesc('Custom name for the "insert toggle" command (requires restart to apply)')
             .addText(text => text
-                .setPlaceholder('Insert Toggle')
+                .setPlaceholder('Insert toggle')
                 .setValue(this.plugin.settings.toggleCommandName)
                 .onChange(async (value) => {
                     this.plugin.settings.toggleCommandName = value;
@@ -147,10 +144,10 @@ class NotionToggleSettingsTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Insert Code Block Toggle Command Name')
-            .setDesc('Custom name for the "Insert Code Block Toggle" command (Requires restart to apply)')
+            .setName('Insert code block toggle command name')
+            .setDesc('Custom name for the "insert code block toggle" command (requires restart to apply)')
             .addText(text => text
-                .setPlaceholder('Insert Code Block Toggle')
+                .setPlaceholder('Insert code block toggle')
                 .setValue(this.plugin.settings.codeBlockCommandName)
                 .onChange(async (value) => {
                     this.plugin.settings.codeBlockCommandName = value;
@@ -158,32 +155,20 @@ class NotionToggleSettingsTab extends PluginSettingTab {
                 }));
 
         // [PRD 2.6.4] Usage Guide
-        const guideHeader = containerEl.createEl('h3', { text: 'Usage Guide (Syntax)' });
-        guideHeader.style.marginTop = '30px';
+        new Setting(containerEl)
+            .setName('Usage guide (syntax)')
+            .setHeading();
 
-        const guideContainer = containerEl.createDiv();
-        guideContainer.style.color = "var(--text-muted)";
-        guideContainer.style.fontSize = "0.9em";
+        const guideContainer = containerEl.createDiv({ cls: 'toggle-settings-guide-container' });
 
         // Helper to create a syntax block
         const createSyntaxBlock = (title: string, code: string, note?: string) => {
-            const p = guideContainer.createEl('p', { text: title });
-            p.style.fontWeight = 'bold';
-            p.style.marginTop = '15px';
-            p.style.marginBottom = '5px';
+            guideContainer.createEl('p', { text: title, cls: 'toggle-settings-guide-title' });
 
-            const pre = guideContainer.createEl('pre', { text: code });
-            pre.style.backgroundColor = "var(--background-secondary)";
-            pre.style.padding = "10px";
-            pre.style.borderRadius = "5px";
-            pre.style.fontFamily = "var(--font-monospace)";
-            pre.style.margin = "0";
+            guideContainer.createEl('pre', { text: code, cls: 'toggle-settings-guide-code' });
 
             if (note) {
-                const div = guideContainer.createEl('div', { text: note });
-                div.style.marginTop = '4px';
-                div.style.fontSize = '0.85em';
-                div.style.color = 'var(--text-faint)';
+                guideContainer.createDiv({ text: note, cls: 'toggle-settings-guide-note' });
             }
         };
 

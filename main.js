@@ -46,8 +46,7 @@ var ToggleWidget = class extends import_view.WidgetType {
     this.isCodeBlock = isCodeBlock;
   }
   toDOM(view) {
-    const span = document.createElement("span");
-    span.className = "toggle-widget";
+    const span = createSpan({ cls: "toggle-widget" });
     if (this.isCodeBlock) {
       span.classList.add("toggle-codeblock");
     }
@@ -62,13 +61,13 @@ var ToggleWidget = class extends import_view.WidgetType {
           view.dispatch({
             effects: import_language.unfoldEffect.of({ from: this.foldStart, to: this.foldEnd })
           });
-          setTimeout(() => {
+          window.setTimeout(() => {
             const pos = this.foldEnd;
             view.dispatch({
               changes: { from: pos, insert: " " },
               annotations: import_state.Transaction.addToHistory.of(false)
             });
-            setTimeout(() => {
+            window.setTimeout(() => {
               view.dispatch({
                 changes: { from: pos, to: pos + 1, insert: "" },
                 annotations: import_state.Transaction.addToHistory.of(false)
@@ -97,7 +96,7 @@ var CopyWidget = class extends import_view.WidgetType {
     this.language = language;
   }
   toDOM(view) {
-    const span = document.createElement("span");
+    const span = createSpan();
     if (this.language) {
       span.className = "toggle-lang-badge";
       span.textContent = this.language;
@@ -146,7 +145,7 @@ var EndTagWidget = class extends import_view.WidgetType {
     this.isError = isError;
   }
   toDOM(view) {
-    const span = document.createElement("span");
+    const span = createSpan();
     if (this.isError) {
       span.className = "toggle-end-error";
       span.textContent = "<| (unmatched)";
@@ -169,9 +168,7 @@ var EndTagWidget = class extends import_view.WidgetType {
 };
 var HeaderHashWidget = class extends import_view.WidgetType {
   toDOM(view) {
-    const span = document.createElement("span");
-    span.className = "toggle-header-hash-widget";
-    return span;
+    return createSpan({ cls: "toggle-header-hash-widget" });
   }
 };
 function findMatchingEndLine(doc, startLineNo) {
@@ -402,7 +399,7 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
         if (trimmedText.startsWith("```") || trimmedText.startsWith("~~~")) {
           const match = trimmedText.match(/^(?:```|~~~)(.*?)>\s*$/);
           const isCodeBlockToggle = !!match;
-          if (!inCodeBlock && isCodeBlockToggle) {
+          if (!inCodeBlock && isCodeBlockToggle && match) {
             const language = match[1].trim();
             const endToken = trimmedText.startsWith("```") ? "```" : "~~~";
             let codeBlockEndLine = -1;
@@ -590,11 +587,12 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
         }
       }
       decos.sort((a, b) => {
-        var _a, _b;
         if (a.from !== b.from)
           return a.from - b.from;
-        const aIsLine = a.from === a.to && !!((_a = a.deco.spec) == null ? void 0 : _a.class);
-        const bIsLine = b.from === b.to && !!((_b = b.deco.spec) == null ? void 0 : _b.class);
+        const aSpec = a.deco.spec;
+        const bSpec = b.deco.spec;
+        const aIsLine = a.from === a.to && !!(aSpec == null ? void 0 : aSpec.class);
+        const bIsLine = b.from === b.to && !!(bSpec == null ? void 0 : bSpec.class);
         if (aIsLine && !bIsLine)
           return -1;
         if (!aIsLine && bIsLine)
@@ -649,19 +647,19 @@ var toggleExtension = [
 
 // reading_mode_processor.ts
 var import_obsidian2 = require("obsidian");
-var START_TAG2 = "|>";
+var START_TAG2 = "|> ";
 var END_TAG2 = "<|";
 function parseLevels(text) {
   const lines = text.split(/\r\n|\r|\n/);
   const levels = new Int32Array(lines.length).fill(0);
-  const rounds = new Array(lines.length).fill("");
+  const rounds = lines.map(() => "");
   const openStack = [];
   const validRanges = [];
   for (let i = 0; i < lines.length; i++) {
     const lineText = lines[i];
-    if (lineText.startsWith(START_TAG2)) {
+    if (lineText.trimStart().startsWith(START_TAG2)) {
       openStack.push(i);
-    } else if (lineText.startsWith(END_TAG2)) {
+    } else if (lineText.trimStart().startsWith(END_TAG2)) {
       if (openStack.length > 0) {
         const start = openStack.pop();
         validRanges.push({ start, end: i });
@@ -712,19 +710,15 @@ async function readingModeProcessor(el, ctx) {
       if (roundType === "bot")
         child.classList.add("toggle-round-bot");
     }
-    if (lineText.startsWith(START_TAG2)) {
-      const contentAfter = lineText.slice(START_TAG2.length);
-      const headerMatch = contentAfter.match(/^\s*(#{1,6})(?:\s|$)/);
+    const trimmedSource = lineText.trimStart();
+    if (trimmedSource.startsWith(START_TAG2)) {
+      const contentAfter = trimmedSource.slice(START_TAG2.length);
+      const headerMatch = contentAfter.match(/^\s*(#{1,6})\s/);
       const isHeader = !!headerMatch;
-      if (isHeader) {
-        child.classList.add("toggle-header-line");
-      } else {
-        child.classList.add("toggle-standard-line");
-      }
       const walker = document.createTreeWalker(child, NodeFilter.SHOW_TEXT);
       const firstTextNode = walker.nextNode();
       if (firstTextNode && firstTextNode.nodeValue) {
-        if (firstTextNode.nodeValue.startsWith("|>")) {
+        if (firstTextNode.nodeValue.trimStart().startsWith("|>")) {
           const originalVal = firstTextNode.nodeValue;
           const triggerIdx = originalVal.indexOf("|>");
           if (triggerIdx !== -1) {
@@ -732,9 +726,10 @@ async function readingModeProcessor(el, ctx) {
             const beforeText = originalVal.substring(0, triggerIdx);
             firstTextNode.nodeValue = beforeText + (isHeader ? "" : "");
             if (!isHeader) {
-              const triangle = document.createElement("span");
-              triangle.className = "toggle-widget";
-              triangle.textContent = "\u25BC";
+              const triangle = createSpan({
+                cls: "toggle-widget",
+                text: "\u25BC"
+              });
               if (firstTextNode.parentNode) {
                 firstTextNode.parentNode.insertBefore(triangle, firstTextNode.nextSibling);
                 const textNodeAfter = document.createTextNode(afterText);
@@ -761,8 +756,7 @@ async function readingModeProcessor(el, ctx) {
       }
       const endLineNo = findMatchingEndLine2(levels, lines, currentLine);
       if (endLineNo !== -1) {
-        const copyBtn = document.createElement("span");
-        copyBtn.className = "toggle-copy-btn";
+        const copyBtn = createSpan({ cls: "toggle-copy-btn" });
         const icon = (0, import_obsidian2.getIcon)("copy");
         if (icon)
           copyBtn.appendChild(icon);
@@ -793,7 +787,7 @@ async function readingModeProcessor(el, ctx) {
 function findMatchingEndLine2(levels, lines, startLine) {
   let stack = 1;
   for (let i = startLine + 1; i < lines.length; i++) {
-    const txt = lines[i];
+    const txt = lines[i].trimStart();
     if (txt.startsWith(START_TAG2))
       stack++;
     else if (txt.startsWith(END_TAG2)) {
@@ -886,50 +880,33 @@ var NotionToggleSettingsTab = class extends import_obsidian3.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    const bannerContainer = containerEl.createDiv();
-    bannerContainer.style.marginBottom = "20px";
-    bannerContainer.style.textAlign = "center";
+    const bannerContainer = containerEl.createDiv({ cls: "toggle-settings-banner" });
     const link = bannerContainer.createEl("a", {
       href: "https://www.buymeacoffee.com/jawoojo"
     });
-    const img = link.createEl("img", {
+    link.createEl("img", {
+      cls: "toggle-settings-banner-img",
       attr: {
         src: "https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png",
         alt: "Buy Me A Coffee"
       }
     });
-    img.style.width = "200px";
-    img.style.height = "auto";
-    containerEl.createEl("h2", { text: "Notion Style Toggle Settings" });
-    new import_obsidian3.Setting(containerEl).setName("Insert Toggle Command Name").setDesc('Custom name for the "Insert Toggle" command (Requires restart to apply)').addText((text) => text.setPlaceholder("Insert Toggle").setValue(this.plugin.settings.toggleCommandName).onChange(async (value) => {
+    new import_obsidian3.Setting(containerEl).setName("Commands").setHeading();
+    new import_obsidian3.Setting(containerEl).setName("Insert toggle command name").setDesc('Custom name for the "insert toggle" command (requires restart to apply)').addText((text) => text.setPlaceholder("Insert toggle").setValue(this.plugin.settings.toggleCommandName).onChange(async (value) => {
       this.plugin.settings.toggleCommandName = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian3.Setting(containerEl).setName("Insert Code Block Toggle Command Name").setDesc('Custom name for the "Insert Code Block Toggle" command (Requires restart to apply)').addText((text) => text.setPlaceholder("Insert Code Block Toggle").setValue(this.plugin.settings.codeBlockCommandName).onChange(async (value) => {
+    new import_obsidian3.Setting(containerEl).setName("Insert code block toggle command name").setDesc('Custom name for the "insert code block toggle" command (requires restart to apply)').addText((text) => text.setPlaceholder("Insert code block toggle").setValue(this.plugin.settings.codeBlockCommandName).onChange(async (value) => {
       this.plugin.settings.codeBlockCommandName = value;
       await this.plugin.saveSettings();
     }));
-    const guideHeader = containerEl.createEl("h3", { text: "Usage Guide (Syntax)" });
-    guideHeader.style.marginTop = "30px";
-    const guideContainer = containerEl.createDiv();
-    guideContainer.style.color = "var(--text-muted)";
-    guideContainer.style.fontSize = "0.9em";
+    new import_obsidian3.Setting(containerEl).setName("Usage guide (syntax)").setHeading();
+    const guideContainer = containerEl.createDiv({ cls: "toggle-settings-guide-container" });
     const createSyntaxBlock = (title, code, note) => {
-      const p = guideContainer.createEl("p", { text: title });
-      p.style.fontWeight = "bold";
-      p.style.marginTop = "15px";
-      p.style.marginBottom = "5px";
-      const pre = guideContainer.createEl("pre", { text: code });
-      pre.style.backgroundColor = "var(--background-secondary)";
-      pre.style.padding = "10px";
-      pre.style.borderRadius = "5px";
-      pre.style.fontFamily = "var(--font-monospace)";
-      pre.style.margin = "0";
+      guideContainer.createEl("p", { text: title, cls: "toggle-settings-guide-title" });
+      guideContainer.createEl("pre", { text: code, cls: "toggle-settings-guide-code" });
       if (note) {
-        const div = guideContainer.createEl("div", { text: note });
-        div.style.marginTop = "4px";
-        div.style.fontSize = "0.85em";
-        div.style.color = "var(--text-faint)";
+        guideContainer.createDiv({ text: note, cls: "toggle-settings-guide-note" });
       }
     };
     createSyntaxBlock(

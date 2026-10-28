@@ -7,7 +7,7 @@ const END_TAG = "<|";
 function parseLevels(text: string): { levels: number[], rounds: string[] } {
     const lines = text.split(/\r\n|\r|\n/);
     const levels = new Int32Array(lines.length).fill(0);
-    const rounds = new Array(lines.length).fill("");
+    const rounds: string[] = lines.map(() => "");
 
     const openStack: number[] = [];
     const validRanges: { start: number, end: number }[] = [];
@@ -151,9 +151,11 @@ export async function readingModeProcessor(el: HTMLElement, ctx: MarkdownPostPro
                         // Inject Triangle Span
                         // Only if NOT header (User Requirements)
                         if (!isHeader) {
-                            const triangle = document.createElement("span");
-                            triangle.className = "toggle-widget";
-                            triangle.textContent = "▼"; // Default open in reading mode?
+                            const triangle = createSpan({
+                                cls: "toggle-widget",
+                                text: "▼"
+                            });
+                            // Default open in reading mode?
                             // In Reading mode, everything is static. We can't easily toggle state.
                             // So just show "Down Arrow" to indicate it's open.
                             // Margin handled by CSS (.toggle-widget)
@@ -210,8 +212,7 @@ export async function readingModeProcessor(el: HTMLElement, ctx: MarkdownPostPro
             // Yes.
             const endLineNo = findMatchingEndLine(levels, lines, currentLine);
             if (endLineNo !== -1) {
-                const copyBtn = document.createElement("span");
-                copyBtn.className = "toggle-copy-btn";
+                const copyBtn = createSpan({ cls: "toggle-copy-btn" });
                 const icon = getIcon("copy");
                 if (icon) copyBtn.appendChild(icon);
 

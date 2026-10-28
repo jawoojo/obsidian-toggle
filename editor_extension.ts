@@ -42,8 +42,7 @@ class ToggleWidget extends WidgetType {
     }
 
     toDOM(view: EditorView): HTMLElement {
-        const span = document.createElement("span");
-        span.className = "toggle-widget";
+        const span = createSpan({ cls: "toggle-widget" });
         if (this.isCodeBlock) {
             span.classList.add("toggle-codeblock");
         }
@@ -65,14 +64,14 @@ class ToggleWidget extends WidgetType {
 
                     // [Fix] 더미 수정: 공백 삽입 후 즉시 삭제하여 HyperMD 재파싱 유도
                     // Syntax Highlighting 깨짐 방지를 위한 "치트키"
-                    setTimeout(() => {
+                    window.setTimeout(() => {
                         const pos = this.foldEnd;
                         view.dispatch({
                             changes: { from: pos, insert: " " },
                             annotations: Transaction.addToHistory.of(false)
                         });
 
-                        setTimeout(() => {
+                        window.setTimeout(() => {
                             view.dispatch({
                                 changes: { from: pos, to: pos + 1, insert: "" },
                                 annotations: Transaction.addToHistory.of(false)
@@ -104,7 +103,7 @@ class CopyWidget extends WidgetType {
     }
 
     toDOM(view: EditorView): HTMLElement {
-        const span = document.createElement("span");
+        const span = createSpan();
 
         // [New] 언어 뱃지 스타일링 분기
         if (this.language) {
@@ -167,7 +166,7 @@ class EndTagWidget extends WidgetType {
     }
 
     toDOM(view: EditorView): HTMLElement {
-        const span = document.createElement("span");
+        const span = createSpan();
 
         if (this.isError) {
             span.className = "toggle-end-error";
@@ -194,9 +193,7 @@ class EndTagWidget extends WidgetType {
 
 class HeaderHashWidget extends WidgetType {
     toDOM(view: EditorView): HTMLElement {
-        const span = document.createElement("span");
-        span.className = "toggle-header-hash-widget";
-        return span;
+        return createSpan({ cls: "toggle-header-hash-widget" });
     }
 }
 
@@ -535,9 +532,9 @@ const togglePlugin = ViewPlugin.fromClass(
                     const match = trimmedText.match(/^(?:```|~~~)(.*?)>\s*$/);
                     const isCodeBlockToggle = !!match;
 
-                    if (!inCodeBlock && isCodeBlockToggle) {
+                    if (!inCodeBlock && isCodeBlockToggle && match) {
                         // 언어 추출 및 정제
-                        const language = match![1].trim();
+                        const language = match[1].trim();
 
                         // Key: 접기를 활성화하려면 닫는 펜스를 찾아야 함
                         // foldService와 유사한 로직 재사용
@@ -784,8 +781,10 @@ const togglePlugin = ViewPlugin.fromClass(
             // [PRD 3.1.3] 데코레이션 정렬 (Line Decoration 우선 정렬로 RangeSetBuilder 오류 방지)
             decos.sort((a, b) => {
                 if (a.from !== b.from) return a.from - b.from;
-                const aIsLine = a.from === a.to && !!(a.deco.spec as any)?.class;
-                const bIsLine = b.from === b.to && !!(b.deco.spec as any)?.class;
+                const aSpec = a.deco.spec as { class?: string } | undefined;
+                const bSpec = b.deco.spec as { class?: string } | undefined;
+                const aIsLine = a.from === a.to && !!aSpec?.class;
+                const bIsLine = b.from === b.to && !!bSpec?.class;
                 if (aIsLine && !bIsLine) return -1;
                 if (!aIsLine && bIsLine) return 1;
                 return 0;

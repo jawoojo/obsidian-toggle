@@ -14,22 +14,25 @@
 /* Determined by JS explicitly checking for |> and <| */
 
 /* Start Tag Line -> Round Top */
+.cm-line.toggle-round-top,
 .toggle-round-top {
-    border-top-left-radius: 5px !important;
-    border-top-right-radius: 5px !important;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
 }
 
 /* End Tag Line -> Round Bottom */
+.cm-line.toggle-round-bot,
 .toggle-round-bot {
-    border-bottom-left-radius: 5px !important;
-    border-bottom-right-radius: 5px !important;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
 }
 
 /* [PRD 2.4.1] 코드블록 토글 접힘 시 아래쪽 모서리 라운딩 */
 /* -> 옵시디언 네이티브 코드블록 곡률(--code-radius)과 100% 일치, 미정의 시 사용자 요청값 3px 적용 */
+.cm-line.toggle-codeblock-line.toggle-round-bot,
 .toggle-codeblock-line.toggle-round-bot {
-    border-bottom-left-radius: var(--code-radius, var(--radius-s, 3px)) !important;
-    border-bottom-right-radius: var(--code-radius, var(--radius-s, 3px)) !important;
+    border-bottom-left-radius: var(--code-radius, var(--radius-s, 3px));
+    border-bottom-right-radius: var(--code-radius, var(--radius-s, 3px));
 }
 
 /* Cleanup: Complex sibling selectors removed */
@@ -122,8 +125,8 @@
 }
 
 /* [Fix] Code Block Toggle: No Extra Left Margin */
-.toggle-widget.toggle-codeblock {
-    margin-left: 0px !important;
+span.toggle-widget.toggle-codeblock {
+    margin-left: 0px;
 }
 
 .toggle-widget:hover {
@@ -140,18 +143,26 @@
  * -> 일반 토글과 코드블록 토글은 자체 삼각형(▶/▼)이 있으므로 옵시디언 기본 화살표(>)와 말줄임표(...) 숨김
  * -> 단, 제목 토글(|>#)과 일반 옵시디언 헤딩은 네이티브 접기 화살표(>) 및 (...)를 유지하여 접고 펼 수 있게 함
  */
+.cm-line.toggle-standard-line .cm-foldPlaceholder,
+.cm-line.toggle-codeblock-line .cm-foldPlaceholder,
 .toggle-standard-line .cm-foldPlaceholder,
 .toggle-codeblock-line .cm-foldPlaceholder {
-    display: none !important;
+    display: none;
 }
 
+.cm-line.toggle-standard-line .collapse-indicator,
+.cm-line.toggle-standard-line .heading-collapse-indicator,
+.cm-line.toggle-standard-line .cm-fold-indicator,
+.cm-line.toggle-codeblock-line .collapse-indicator,
+.cm-line.toggle-codeblock-line .heading-collapse-indicator,
+.cm-line.toggle-codeblock-line .cm-fold-indicator,
 .toggle-standard-line .collapse-indicator,
 .toggle-standard-line .heading-collapse-indicator,
 .toggle-standard-line .cm-fold-indicator,
 .toggle-codeblock-line .collapse-indicator,
 .toggle-codeblock-line .heading-collapse-indicator,
 .toggle-codeblock-line .cm-fold-indicator {
-    display: none !important;
+    display: none;
 }
 
 /* [NEW] End Tag Line Style (<|) */
@@ -173,11 +184,11 @@
 
 /* [Refactor] Utility Classes (Bot Feedback) */
 .u-hidden {
-    display: none !important;
+    display: none;
 }
 
 .u-relative {
-    position: relative !important;
+    position: relative;
 }
 
 /* [Refactor] Header Styling Classes (to avoid inline styles) */
@@ -248,8 +259,9 @@
 }
 
 /* Hover on Button itself -> 네이티브 코드블록처럼 또렷해지고 배경 강조 */
+.toggle-bg .toggle-copy-btn:hover,
 .toggle-copy-btn:hover {
-    opacity: 1 !important;
+    opacity: 1;
     background-color: var(--background-modifier-hover);
     color: var(--text-normal);
 }
@@ -278,4 +290,40 @@
 .toggle-lang-badge:hover {
     background-color: var(--background-modifier-hover);
     color: var(--text-normal);
+}
+
+/* Settings Tab Styling */
+.toggle-settings-banner {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.toggle-settings-banner-img {
+    width: 200px;
+    height: auto;
+}
+
+.toggle-settings-guide-container {
+    color: var(--text-muted);
+    font-size: 0.9em;
+}
+
+.toggle-settings-guide-title {
+    font-weight: bold;
+    margin-top: 15px;
+    margin-bottom: 5px;
+}
+
+.toggle-settings-guide-code {
+    background-color: var(--background-secondary);
+    padding: 10px;
+    border-radius: 5px;
+    font-family: var(--font-monospace);
+    margin: 0;
+}
+
+.toggle-settings-guide-note {
+    margin-top: 4px;
+    font-size: 0.85em;
+    color: var(--text-faint);
 }
