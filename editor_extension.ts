@@ -784,32 +784,16 @@ const togglePlugin = ViewPlugin.fromClass(
                             if (from === foldStart && to === foldEnd) isFolded = true;
                         });
 
-                        const toggleFrom = line.from;
-                        const toggleTo = doc.line(endLineNo).to;
-
-                        // 사용자가 토글 블록(시작줄~종료줄)을 편집/작성 중인지 확인
-                        let isEditing = false;
-                        for (const r of selection.ranges) {
-                            if (r.to >= toggleFrom && r.from <= toggleTo) {
-                                isEditing = true;
-                                break;
-                            }
-                        }
-
-                        // 접혀있을 때는 항상 표시(접힌 상태에서도 복사 가능),
-                        // 펼쳐져 있을 때는 편집(작성) 중이 아닐 때만 표시
-                        const shouldShowCopy = isFolded || !isEditing;
-
-                        if (shouldShowCopy) {
-                            decos.push({
-                                from: line.to, // 줄 끝에 추가
-                                to: line.to,
-                                deco: Decoration.widget({
-                                    widget: new CopyWidget(i, endLineNo, true, "", isFolded),
-                                    side: 1
-                                })
-                            });
-                        }
+                        // [PRD 3.1.3] 일반/제목 토글 복사 위젯:
+                        // -> 편집 여부와 무관하게 항상 생성하여, 편집 중이라도 마우스를 1~2번째 줄에 올리면 복사 버튼이 뜨도록 CSS(:hover)에 위임
+                        decos.push({
+                            from: line.to, // 줄 끝에 추가
+                            to: line.to,
+                            deco: Decoration.widget({
+                                widget: new CopyWidget(i, endLineNo, true, "", isFolded),
+                                side: 1
+                            })
+                        });
                     }
                 }
 

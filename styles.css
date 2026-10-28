@@ -259,8 +259,7 @@ span.toggle-widget.toggle-codeblock {
     transition: width 0.15s ease, height 0.15s ease;
 }
 
-/* Hover on Button itself -> 네이티브 코드블록처럼 또렷해지고 배경 강조 */
-.toggle-bg .toggle-copy-btn:hover,
+/* [PRD 3.1.3] 버튼 자체에 마우스 호버 시 -> 네이티브 코드블록과 100% 동일한 네모난 배경 강조 */
 .toggle-copy-btn:hover {
     opacity: 1;
     background-color: var(--background-modifier-hover);
@@ -269,6 +268,32 @@ span.toggle-widget.toggle-codeblock {
 
 .toggle-copy-btn:active {
     transform: scale(0.92);
+}
+
+/* [PRD 3.1.3] 일반 토글 및 제목 토글 복사 버튼 가시성 제어
+ * -> 평소(접힘 상태 및 편집 중 포함)에는 숨겨져 있다가, 1번째 줄 또는 2번째 줄에 마우스 호버 시에만 자연스럽게 노출
+ */
+.toggle-standard-line .toggle-copy-btn,
+.toggle-header-line .toggle-copy-btn {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* 1번째 줄 호버 또는 2번째 줄(+ .cm-line) 호버 시 복사 버튼 표시 (편집 중이든 접혔을 때든 동작) */
+.toggle-standard-line:hover .toggle-copy-btn,
+.toggle-header-line:hover .toggle-copy-btn,
+.toggle-standard-line:has(+ .cm-line:hover) .toggle-copy-btn,
+.toggle-header-line:has(+ .cm-line:hover) .toggle-copy-btn {
+    opacity: 0.8;
+    pointer-events: auto;
+}
+
+/* 버튼 위에 직접 마우스가 올라갔을 때 100% 또렷하게 강조 */
+.toggle-standard-line .toggle-copy-btn:hover,
+.toggle-header-line .toggle-copy-btn:hover {
+    opacity: 1;
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
 }
 
 /* [PRD 3.1.3] 접힌 상태 복사 버튼 컴팩트화

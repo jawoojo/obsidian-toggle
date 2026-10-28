@@ -587,27 +587,15 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
               if (from === foldStart && to === foldEnd)
                 isFolded = true;
             });
-            const toggleFrom = line.from;
-            const toggleTo = doc.line(endLineNo).to;
-            let isEditing = false;
-            for (const r of selection.ranges) {
-              if (r.to >= toggleFrom && r.from <= toggleTo) {
-                isEditing = true;
-                break;
-              }
-            }
-            const shouldShowCopy = isFolded || !isEditing;
-            if (shouldShowCopy) {
-              decos.push({
-                from: line.to,
-                // 줄 끝에 추가
-                to: line.to,
-                deco: import_view.Decoration.widget({
-                  widget: new CopyWidget(i, endLineNo, true, "", isFolded),
-                  side: 1
-                })
-              });
-            }
+            decos.push({
+              from: line.to,
+              // 줄 끝에 추가
+              to: line.to,
+              deco: import_view.Decoration.widget({
+                widget: new CopyWidget(i, endLineNo, true, "", isFolded),
+                side: 1
+              })
+            });
           }
         }
       }
