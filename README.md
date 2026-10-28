@@ -22,10 +22,10 @@ Here are the 7 major upgrades and enhancements introduced since early versions (
 ### Preview
 
 ### 1. Expanded
-![Toggle Expanded](https://raw.githubusercontent.com/jawoojo/obsidian-toggle/main/image/unfold.png)
+![Toggle Expanded](https://raw.githubusercontent.com/jawoojo/obsidian-toggle/main/image/unfolded.png)
 
 ### 2. Folded
-![Toggle Folded](https://raw.githubusercontent.com/jawoojo/obsidian-toggle/main/image/fold.png)
+![Toggle Folded](https://raw.githubusercontent.com/jawoojo/obsidian-toggle/main/image/folded.png)
 
 ## Features
 
