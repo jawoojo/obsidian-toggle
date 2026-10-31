@@ -536,7 +536,8 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
                   deco: import_view.Decoration.replace({
                     widget: new ToggleWidget(isFolded, foldStart, foldEnd, false, true),
                     // isCodeBlock = true
-                    inclusive: true
+                    inclusive: false
+                    // [PRD 3.1.1] 접힘 시 line.to에서 시작하는 Fold 데코레이션과의 경계 충돌 방지 (접힘 회전 애니메이션 보존)
                   })
                 });
               }
@@ -583,7 +584,8 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
                 deco: import_view.Decoration.replace({
                   widget: new ToggleWidget(isFolded, foldStart, foldEnd, isHeader, false),
                   // isHeader를 invisible 플래그로 전달, isCodeBlock = false
-                  inclusive: true
+                  inclusive: false
+                  // [PRD 3.1.1] 내용 없는 |> 토글의 line.to 경계 충돌 방지 (접힘 회전 애니메이션 보존)
                 })
               });
             }
