@@ -61,12 +61,27 @@ class ToggleWidget extends WidgetType {
             // [PRD 3.1.1] 글자 교체 대신 고정 심볼 + CSS 회전으로 부드러운 애니메이션 구현
             span.textContent = "▶";
             if (this.isFolded) {
-                span.classList.add("is-folded");
+                // [PRD 3.1.1] 첫 줄 전체가 치환된 토글(내용 없는 '|>' 및 모든 코드블록 토글 '```>')을 접을 때,
+                // [line.from, line.to] 위젯 범위와 [line.to, foldEnd] 접힘 범위가 맞닿아([line.from, foldEnd])
+                // CodeMirror가 첫 줄 DOM을 새로 생성(toDOM)하더라도 회전 애니메이션이 작동하도록
+                // 직전 클릭으로 접힌 경우 펼침 상태(90deg)로 먼저 마운트하고 리플로우 후 is-folded(0deg) 부여
+                if (ToggleWidget.animatingFoldStart === this.foldStart) {
+                    ToggleWidget.animatingFoldStart = -1;
+                    window.requestAnimationFrame(() => {
+                        void span.offsetWidth; // 초기 상태(rotate(90deg)) 스타일 계산 강제 확정
+                        span.classList.add("is-folded");
+                    });
+                } else {
+                    span.classList.add("is-folded");
+                }
             }
             this.setupClickHandler(span, view);
         }
         return span;
     }
+
+    // [PRD 3.1.1] 방금 클릭하여 접기(Fold)를 트리거한 토글의 foldStart 위치 기록 (DOM 재생성 시 회전 애니메이션 보장용)
+    private static animatingFoldStart = -1;
 
     // [PRD 3.1.1] 부드러운 CSS 회전 애니메이션을 위해 DOM 재성성 대신 클래스 토글 및 핸들러 갱신
     updateDOM(dom: HTMLElement, view: EditorView): boolean {
@@ -131,6 +146,9 @@ class ToggleWidget extends WidgetType {
                     }, 5);
                 }, 5);
             } else {
+                // [PRD 3.1.1] 접기 클릭 시 해당 위치를 기록해, 첫 줄 전체 치환 토글(|> 단독, ```> 코드블록)에서
+                // CodeMirror가 첫 줄 DOM을 재생성(toDOM)하더라도 90deg -> 0deg 회전 트랜지션이 실행되도록 함
+                ToggleWidget.animatingFoldStart = this.foldStart;
                 view.dispatch({
                     effects: foldEffect.of({ from: this.foldStart, to: this.foldEnd })
                 });
@@ -718,7 +736,7 @@ const togglePlugin = ViewPlugin.fromClass(
                                     to: rangeTo,
                                     deco: Decoration.replace({
                                         widget: new ToggleWidget(isFolded, foldStart, foldEnd, false, true), // isCodeBlock = true
-                                        inclusive: false // [PRD 3.1.1] 접힘 시 line.to에서 시작하는 Fold 데코레이션과의 경계 충돌 방지 (접힘 회전 애니메이션 보존)
+                                        inclusive: true // [PRD 3.1.1] 옵시디언 Live Preview 기본 펜스/복사버튼 치환보다 넓은 경계(startSide=-2, endSide=2)를 유지해 삼각형 소실 및 복사버튼 중첩 방지
                                     })
                                 });
                             }
@@ -781,7 +799,7 @@ const togglePlugin = ViewPlugin.fromClass(
                                 to: rangeTo,
                                 deco: Decoration.replace({
                                     widget: new ToggleWidget(isFolded, foldStart, foldEnd, isHeader, false), // isHeader를 invisible 플래그로 전달, isCodeBlock = false
-                                    inclusive: false // [PRD 3.1.1] 내용 없는 |> 토글의 line.to 경계 충돌 방지 (접힘 회전 애니메이션 보존)
+                                    inclusive: true
                                 })
                             });
                         }

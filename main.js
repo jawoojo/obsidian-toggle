@@ -36,7 +36,7 @@ var import_language = require("@codemirror/language");
 var import_obsidian = require("obsidian");
 var START_TAG = "|>";
 var END_TAG = "<|";
-var ToggleWidget = class extends import_view.WidgetType {
+var _ToggleWidget = class extends import_view.WidgetType {
   constructor(isFolded, foldStart, foldEnd, invisible = false, isCodeBlock = false) {
     super();
     this.isFolded = isFolded;
@@ -58,7 +58,15 @@ var ToggleWidget = class extends import_view.WidgetType {
     } else {
       span.textContent = "\u25B6";
       if (this.isFolded) {
-        span.classList.add("is-folded");
+        if (_ToggleWidget.animatingFoldStart === this.foldStart) {
+          _ToggleWidget.animatingFoldStart = -1;
+          window.requestAnimationFrame(() => {
+            void span.offsetWidth;
+            span.classList.add("is-folded");
+          });
+        } else {
+          span.classList.add("is-folded");
+        }
       }
       this.setupClickHandler(span, view);
     }
@@ -114,6 +122,7 @@ var ToggleWidget = class extends import_view.WidgetType {
           }, 5);
         }, 5);
       } else {
+        _ToggleWidget.animatingFoldStart = this.foldStart;
         view.dispatch({
           effects: import_language.foldEffect.of({ from: this.foldStart, to: this.foldEnd })
         });
@@ -124,6 +133,9 @@ var ToggleWidget = class extends import_view.WidgetType {
     return true;
   }
 };
+var ToggleWidget = _ToggleWidget;
+// [PRD 3.1.1] 방금 클릭하여 접기(Fold)를 트리거한 토글의 foldStart 위치 기록 (DOM 재생성 시 회전 애니메이션 보장용)
+ToggleWidget.animatingFoldStart = -1;
 var CopyWidget = class extends import_view.WidgetType {
   constructor(startLineNo, endLineNo, alwaysVisible = false, language = "", isFolded = false) {
     super();
@@ -536,8 +548,8 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
                   deco: import_view.Decoration.replace({
                     widget: new ToggleWidget(isFolded, foldStart, foldEnd, false, true),
                     // isCodeBlock = true
-                    inclusive: false
-                    // [PRD 3.1.1] 접힘 시 line.to에서 시작하는 Fold 데코레이션과의 경계 충돌 방지 (접힘 회전 애니메이션 보존)
+                    inclusive: true
+                    // [PRD 3.1.1] 옵시디언 Live Preview 기본 펜스/복사버튼 치환보다 넓은 경계(startSide=-2, endSide=2)를 유지해 삼각형 소실 및 복사버튼 중첩 방지
                   })
                 });
               }
@@ -584,8 +596,7 @@ var togglePlugin = import_view.ViewPlugin.fromClass(
                 deco: import_view.Decoration.replace({
                   widget: new ToggleWidget(isFolded, foldStart, foldEnd, isHeader, false),
                   // isHeader를 invisible 플래그로 전달, isCodeBlock = false
-                  inclusive: false
-                  // [PRD 3.1.1] 내용 없는 |> 토글의 line.to 경계 충돌 방지 (접힘 회전 애니메이션 보존)
+                  inclusive: true
                 })
               });
             }
