@@ -59,14 +59,17 @@ var _ToggleWidget = class extends import_view.WidgetType {
       span.textContent = "\u25B6";
       if (this.isFolded) {
         if (_ToggleWidget.animatingFoldStart === this.foldStart) {
-          _ToggleWidget.animatingFoldStart = -1;
-          window.requestAnimationFrame(() => {
-            void span.offsetWidth;
+          window.setTimeout(() => {
             span.classList.add("is-folded");
-          });
+          }, 30);
         } else {
           span.classList.add("is-folded");
         }
+      } else if (_ToggleWidget.animatingUnfoldStart === this.foldStart) {
+        span.classList.add("is-folded");
+        window.setTimeout(() => {
+          span.classList.remove("is-folded");
+        }, 30);
       }
       this.setupClickHandler(span, view);
     }
@@ -85,9 +88,21 @@ var _ToggleWidget = class extends import_view.WidgetType {
       dom.classList.remove("toggle-codeblock");
     }
     if (this.isFolded) {
-      dom.classList.add("is-folded");
+      if (_ToggleWidget.animatingFoldStart !== this.foldStart) {
+        dom.classList.add("is-folded");
+      } else {
+        window.setTimeout(() => {
+          dom.classList.add("is-folded");
+        }, 30);
+      }
     } else {
-      dom.classList.remove("is-folded");
+      if (_ToggleWidget.animatingUnfoldStart !== this.foldStart) {
+        dom.classList.remove("is-folded");
+      } else {
+        window.setTimeout(() => {
+          dom.classList.remove("is-folded");
+        }, 30);
+      }
     }
     this.setupClickHandler(dom, view);
     return true;
@@ -105,27 +120,38 @@ var _ToggleWidget = class extends import_view.WidgetType {
         }
       });
       if (isCurrentlyFolded) {
+        _ToggleWidget.animatingUnfoldStart = this.foldStart;
         view.dispatch({
           effects: import_language.unfoldEffect.of({ from: this.foldStart, to: this.foldEnd })
         });
         window.setTimeout(() => {
+          _ToggleWidget.animatingUnfoldStart = -1;
+        }, 50);
+        window.setTimeout(() => {
           const pos = this.foldEnd;
-          view.dispatch({
-            changes: { from: pos, insert: " " },
-            annotations: import_state.Transaction.addToHistory.of(false)
-          });
-          window.setTimeout(() => {
+          if (pos <= view.state.doc.length) {
             view.dispatch({
-              changes: { from: pos, to: pos + 1, insert: "" },
+              changes: { from: pos, insert: " " },
               annotations: import_state.Transaction.addToHistory.of(false)
             });
-          }, 5);
-        }, 5);
+            window.setTimeout(() => {
+              if (pos + 1 <= view.state.doc.length) {
+                view.dispatch({
+                  changes: { from: pos, to: pos + 1, insert: "" },
+                  annotations: import_state.Transaction.addToHistory.of(false)
+                });
+              }
+            }, 5);
+          }
+        }, 200);
       } else {
         _ToggleWidget.animatingFoldStart = this.foldStart;
         view.dispatch({
           effects: import_language.foldEffect.of({ from: this.foldStart, to: this.foldEnd })
         });
+        window.setTimeout(() => {
+          _ToggleWidget.animatingFoldStart = -1;
+        }, 50);
       }
     };
   }
@@ -134,8 +160,9 @@ var _ToggleWidget = class extends import_view.WidgetType {
   }
 };
 var ToggleWidget = _ToggleWidget;
-// [PRD 3.1.1] 방금 클릭하여 접기(Fold)를 트리거한 토글의 foldStart 위치 기록 (DOM 재생성 시 회전 애니메이션 보장용)
+// [PRD 3.1.1] 방금 클릭하여 접기/펼치기를 트리거한 토글의 foldStart 위치 기록 (DOM 재생성 시 회전 애니메이션 보장용)
 ToggleWidget.animatingFoldStart = -1;
+ToggleWidget.animatingUnfoldStart = -1;
 var CopyWidget = class extends import_view.WidgetType {
   constructor(startLineNo, endLineNo, alwaysVisible = false, language = "", isFolded = false) {
     super();

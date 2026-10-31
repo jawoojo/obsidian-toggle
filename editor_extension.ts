@@ -61,27 +61,36 @@ class ToggleWidget extends WidgetType {
             // [PRD 3.1.1] 글자 교체 대신 고정 심볼 + CSS 회전으로 부드러운 애니메이션 구현
             span.textContent = "▶";
             if (this.isFolded) {
-                // [PRD 3.1.1] 첫 줄 전체가 치환된 토글(내용 없는 '|>' 및 모든 코드블록 토글 '```>')을 접을 때,
-                // [line.from, line.to] 위젯 범위와 [line.to, foldEnd] 접힘 범위가 맞닿아([line.from, foldEnd])
-                // CodeMirror가 첫 줄 DOM을 새로 생성(toDOM)하더라도 회전 애니메이션이 작동하도록
-                // 직전 클릭으로 접힌 경우 펼침 상태(90deg)로 먼저 마운트하고 리플로우 후 is-folded(0deg) 부여
                 if (ToggleWidget.animatingFoldStart === this.foldStart) {
-                    ToggleWidget.animatingFoldStart = -1;
-                    window.requestAnimationFrame(() => {
-                        void span.offsetWidth; // 초기 상태(rotate(90deg)) 스타일 계산 강제 확정
+                    // [PRD 3.1.1] 첫 줄 전체가 치환된 토글(내용 없는 '|>' 및 모든 코드블록 토글 '```>')을 접을 때,
+                    // [line.from, line.to] 위젯 범위와 [line.to, foldEnd] 접힘 범위가 맞닿아([line.from, foldEnd])
+                    // CodeMirror가 첫 줄 DOM을 새로 생성(toDOM)하더라도 회전 애니메이션(90deg -> 0deg)이 작동하도록
+                    // 펼침 상태(90deg)로 먼저 마운트한 뒤 첫 페인트 직후(30ms)에 is-folded(0deg) 부여.
+                    // -> 옵시디언이 foldEffect 직후 1~2프레임에 걸쳐 내부 커서 이동 및 Live Preview 재렌더링을 수행할 때도
+                    //    중간에 애니메이션이 끊기지 않도록 30ms 타이머로 초기 페인트를 보장함.
+                    window.setTimeout(() => {
                         span.classList.add("is-folded");
-                    });
+                    }, 30);
                 } else {
                     span.classList.add("is-folded");
                 }
+            } else if (ToggleWidget.animatingUnfoldStart === this.foldStart) {
+                // [PRD 3.1.1] 첫 줄 전체가 치환된 토글(내용 없는 '|>' 및 모든 코드블록 토글 '```>')을 펼칠 때,
+                // CodeMirror가 첫 줄 DOM을 새로 생성(toDOM)하더라도 회전 애니메이션(0deg -> 90deg)이 작동하도록
+                // 접힘 상태(is-folded)로 먼저 마운트한 뒤 첫 페인트 직후(30ms)에 클래스를 제거하여 부드러운 회전 유도
+                span.classList.add("is-folded");
+                window.setTimeout(() => {
+                    span.classList.remove("is-folded");
+                }, 30);
             }
             this.setupClickHandler(span, view);
         }
         return span;
     }
 
-    // [PRD 3.1.1] 방금 클릭하여 접기(Fold)를 트리거한 토글의 foldStart 위치 기록 (DOM 재생성 시 회전 애니메이션 보장용)
+    // [PRD 3.1.1] 방금 클릭하여 접기/펼치기를 트리거한 토글의 foldStart 위치 기록 (DOM 재생성 시 회전 애니메이션 보장용)
     private static animatingFoldStart = -1;
+    private static animatingUnfoldStart = -1;
 
     // [PRD 3.1.1] 부드러운 CSS 회전 애니메이션을 위해 DOM 재성성 대신 클래스 토글 및 핸들러 갱신
     updateDOM(dom: HTMLElement, view: EditorView): boolean {
@@ -98,9 +107,24 @@ class ToggleWidget extends WidgetType {
         }
 
         if (this.isFolded) {
-            dom.classList.add("is-folded");
+            // [PRD 3.1.1] 방금 toDOM에서 90deg -> 0deg 회전 애니메이션을 예약한 직후,
+            // 옵시디언의 연쇄 트랜잭션(내부 본문/커서 숨김 및 Live Preview 갱신)으로 updateDOM이 즉시 호출되면
+            // 타이머가 실행되기도 전에 is-folded가 즉시 붙어 애니메이션이 씹히는 현상을 방어
+            if (ToggleWidget.animatingFoldStart !== this.foldStart) {
+                dom.classList.add("is-folded");
+            } else {
+                window.setTimeout(() => {
+                    dom.classList.add("is-folded");
+                }, 30);
+            }
         } else {
-            dom.classList.remove("is-folded");
+            if (ToggleWidget.animatingUnfoldStart !== this.foldStart) {
+                dom.classList.remove("is-folded");
+            } else {
+                window.setTimeout(() => {
+                    dom.classList.remove("is-folded");
+                }, 30);
+            }
         }
 
         // [Fix] 새 위젯 인스턴스의 접힘 상태 및 위치 정보로 클릭 핸들러 갱신
@@ -125,33 +149,43 @@ class ToggleWidget extends WidgetType {
             });
 
             if (isCurrentlyFolded) {
+                ToggleWidget.animatingUnfoldStart = this.foldStart;
                 view.dispatch({
                     effects: unfoldEffect.of({ from: this.foldStart, to: this.foldEnd })
                 });
+                window.setTimeout(() => {
+                    ToggleWidget.animatingUnfoldStart = -1;
+                }, 50);
 
-                // [Fix] 더미 수정: 공백 삽입 후 즉시 삭제하여 HyperMD 재파싱 유도
-                // Syntax Highlighting 깨짐 방지를 위한 "치트키"
+                // [PRD 3.1.1] 펼침 시 첫 줄 전체 치환 토글(|> 단독, ```> 코드블록)의 회전 애니메이션(0deg -> 90deg)을
+                // 도중에 끊어버리지 않도록 CSS 회전 트랜지션(200ms) 완료 직후에 HyperMD 재파싱 더미 수정을 실행
+                // [Fix] 더미 수정: 공백 삽입 후 즉시 삭제하여 HyperMD 재파싱 유도 (Syntax Highlighting 깨짐 방지)
                 window.setTimeout(() => {
                     const pos = this.foldEnd;
-                    view.dispatch({
-                        changes: { from: pos, insert: " " },
-                        annotations: Transaction.addToHistory.of(false)
-                    });
-
-                    window.setTimeout(() => {
+                    if (pos <= view.state.doc.length) {
                         view.dispatch({
-                            changes: { from: pos, to: pos + 1, insert: "" },
+                            changes: { from: pos, insert: " " },
                             annotations: Transaction.addToHistory.of(false)
                         });
-                    }, 5);
-                }, 5);
+
+                        window.setTimeout(() => {
+                            if (pos + 1 <= view.state.doc.length) {
+                                view.dispatch({
+                                    changes: { from: pos, to: pos + 1, insert: "" },
+                                    annotations: Transaction.addToHistory.of(false)
+                                });
+                            }
+                        }, 5);
+                    }
+                }, 200);
             } else {
-                // [PRD 3.1.1] 접기 클릭 시 해당 위치를 기록해, 첫 줄 전체 치환 토글(|> 단독, ```> 코드블록)에서
-                // CodeMirror가 첫 줄 DOM을 재생성(toDOM)하더라도 90deg -> 0deg 회전 트랜지션이 실행되도록 함
                 ToggleWidget.animatingFoldStart = this.foldStart;
                 view.dispatch({
                     effects: foldEffect.of({ from: this.foldStart, to: this.foldEnd })
                 });
+                window.setTimeout(() => {
+                    ToggleWidget.animatingFoldStart = -1;
+                }, 50);
             }
         };
     }
